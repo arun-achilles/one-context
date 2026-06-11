@@ -72,7 +72,8 @@ def _save_memory(state: AgentState, action: dict) -> AgentState:
             fact=action["fact"],
             context=action.get("context"),
         )
-        answer = f"✓ Saved to team memory (id: {result['memory_id']}).\n\n> {action['fact']}"
+        brief = action["fact"][:120].rstrip()
+        answer = f"[CHECKPOINT] {brief}"
         feature_id = state.get("feature_id")
         if feature_id:
             try:

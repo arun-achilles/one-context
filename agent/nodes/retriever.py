@@ -42,12 +42,52 @@ def _fetch_live_jira(query: str) -> list[dict]:
     return live
 
 
+def _fetch_live_jira_search(query: str, intent: str) -> list[dict]:
+    """Call Jira text search for pipeline queries or as a fallback for low-confidence qa."""
+    from agent.tools.jira_tools import search_jira
+    try:
+        results = search_jira(query, max_results=5)
+        return [
+            {
+                "content": f"[Live Jira search] {r['key']}: {r['summary']} ({r['status']})",
+                "url": r["url"],
+                "content_type": "jira_issue",
+                "tags": [],
+                "score": 0.7,
+            }
+            for r in results
+        ]
+    except Exception:
+        return []
+
+
+def _fetch_live_confluence_search(query: str) -> list[dict]:
+    """Call Confluence text search as fallback for low-confidence qa."""
+    from agent.tools.confluence_tools import search_confluence
+    try:
+        results = search_confluence(query, max_results=3)
+        return [
+            {
+                "content": f"[Live Confluence] {r['title']}\n{r['excerpt']}",
+                "url": r["url"],
+                "content_type": "confluence_page",
+                "tags": [],
+                "score": 0.65,
+            }
+            for r in results
+        ]
+    except Exception:
+        return []
+
+
 def retriever_node(state: AgentState) -> AgentState:
     query = state["messages"][-1].content
+    intent = state.get("intent", "qa")
 
-    # Live lookups for explicitly named Jira tickets — always takes priority
+    # 1. Live Jira key lookups — explicitly mentioned tickets always resolve first
     live_chunks = _fetch_live_jira(query)
 
+    # 2. Vector search + team memory
     chunks = search_knowledge(query)
     memories = search_memory(query, top_k=2)
 
@@ -67,8 +107,16 @@ def retriever_node(state: AgentState) -> AgentState:
 
     all_chunks = live_chunks + memory_chunks + chunks
     top_score = all_chunks[0]["score"] if all_chunks else 0
-    # Live data counts as confident — don't ask for clarification if we fetched the ticket
-    needs_clarification = (not live_chunks) and (top_score < CONFIDENCE_THRESHOLD)
+
+    # 3. Supplement with live API search when confidence is low or intent demands live data
+    if intent == "pipeline_query":
+        # Always fetch live sprint/ticket data for pipeline questions
+        all_chunks = all_chunks + _fetch_live_jira_search(query, intent)
+    elif top_score < CONFIDENCE_THRESHOLD and not live_chunks:
+        # Low vector confidence + no explicit Jira key → try live search fallback
+        all_chunks = all_chunks + _fetch_live_jira_search(query, intent) + _fetch_live_confluence_search(query)
+
+    needs_clarification = (not live_chunks) and (top_score < CONFIDENCE_THRESHOLD) and (not all_chunks)
 
     return {
         **state,

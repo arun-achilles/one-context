@@ -22,6 +22,20 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
   const cleanContent = msg.content.replace(/<!--[\s\S]*?-->/g, "").trim();
 
+  // Compact checkpoint badge — no bubble
+  if (!isUser && cleanContent.startsWith("[CHECKPOINT]")) {
+    const summary = cleanContent.slice("[CHECKPOINT]".length).trim();
+    return (
+      <div className="flex justify-center fade-up">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+          style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b" }}>
+          <span>💾</span>
+          <span>Checkpoint saved: {summary}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`flex gap-3 fade-up ${isUser ? "flex-row-reverse" : ""}`}>
       {/* Avatar */}
@@ -117,7 +131,10 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
     setMessages([]);
     getMessages(conversationId).then(history => {
       setMessages(history
-        .filter(m => !m.content.startsWith("[FEATURE CONTEXT]"))
+        .filter(m =>
+          !m.content.startsWith("[FEATURE CONTEXT]") &&
+          !m.content.startsWith("[FEATURE CONTEXT ACK]")
+        )
         .map(m => ({
           id: String(m.id),
           role: m.role,

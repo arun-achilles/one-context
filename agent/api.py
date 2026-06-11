@@ -202,6 +202,19 @@ def start_session(feature_id: str, body: NewSession):
     session = create_session(feature_id, conv_id, body.role, body.author)
     context = build_feature_context(feature_id)
 
+    # Persist context as initial messages — loaded by the agent on every turn,
+    # filtered out in the UI via [FEATURE CONTEXT] prefix check.
+    if context:
+        with cursor() as cur:
+            cur.execute(
+                "INSERT INTO messages (conversation_id, role, content, author) VALUES (%s, 'user', %s, 'system')",
+                (conv_id, f"[FEATURE CONTEXT]\n{context}"),
+            )
+            cur.execute(
+                "INSERT INTO messages (conversation_id, role, content, author) VALUES (%s, 'assistant', %s, 'system')",
+                (conv_id, "[FEATURE CONTEXT ACK]"),
+            )
+
     return SessionStarted(
         session_id=session["id"],
         conversation_id=conv_id,
@@ -338,16 +351,12 @@ async def _stream_chat(
             )
             history_rows = cur.fetchall()
 
-        # 2. Check if this conversation belongs to a Feature session
+        # 2. Check if this conversation belongs to a Feature session (for state)
         feature_id = get_feature_for_conversation(conversation_id)
-        feature_context = build_feature_context(feature_id) if feature_id else None
 
-        # 3. Build LangChain message history
-        # Prepend feature context as a system-style human message if present
+        # 3. Build LangChain message history from DB
+        # Feature context is already in DB as initial messages (saved on session start)
         history = []
-        if feature_context:
-            history.append(HumanMessage(content=f"[FEATURE CONTEXT]\n{feature_context}"))
-            history.append(AIMessage(content="Understood. I'm working in this feature context."))
         for row in history_rows:
             if row["role"] == "user":
                 history.append(HumanMessage(content=row["content"]))
