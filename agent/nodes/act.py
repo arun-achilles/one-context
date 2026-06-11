@@ -25,6 +25,9 @@ def act_node(state: AgentState) -> AgentState:
     if action_type == "confluence_update":
         return _update_confluence(state, pending_action)
 
+    if action_type == "link_artefact":
+        return _do_link_artefact(state, pending_action)
+
     return {**state, "answer": f"Unknown action type: {action_type}"}
 
 
@@ -119,6 +122,29 @@ def _update_confluence(state: AgentState, action: dict) -> AgentState:
                 pass
     except Exception as e:
         answer = f"Failed to update Confluence page: {e}"
+    return {**state, "answer": answer, "citations": [], "pending_action": None}
+
+
+def _do_link_artefact(state: AgentState, action: dict) -> AgentState:
+    from agent.tools.feature_tools import link_artefact
+    feature_id = action.get("feature_id") or state.get("feature_id")
+    if not feature_id:
+        return {**state, "answer": "No active feature — open a feature session first.", "citations": [], "pending_action": None}
+    try:
+        link_artefact(
+            feature_id=feature_id,
+            link_type=action["link_type"],
+            link_id=action["link_id"],
+            link_url=action.get("link_url"),
+            title=action.get("title", action["link_id"]),
+        )
+        answer = (
+            f"✓ Linked **{action['link_id']}** to feature **{feature_id}**.\n\n"
+            f"> {action.get('title', '')}\n\n"
+            + (f"[Open in Jira]({action['link_url']})" if action.get("link_url") else "")
+        )
+    except Exception as e:
+        answer = f"Failed to link artefact: {e}"
     return {**state, "answer": answer, "citations": [], "pending_action": None}
 
 

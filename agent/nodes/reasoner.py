@@ -105,6 +105,9 @@ def reasoner_node(state: AgentState) -> AgentState:
     if intent == "confluence_update":
         return _prepare_confluence_update(state, query)
 
+    if intent == "link_artefact":
+        return _prepare_link_artefact(state, query)
+
     # qa, pipeline_query, confirm_action (shouldn't reach here), default
     return _answer_qa(state, query)
 
@@ -292,6 +295,78 @@ def _build_system(base_system: str, state: AgentState) -> str:
     except Exception:
         pass
     return base_system
+
+
+def _prepare_link_artefact(state: AgentState, query: str) -> AgentState:
+    """Handle 'add CL-1524 to this feature' — fetch ticket live, confirm before linking."""
+    feature_id = state.get("feature_id")
+    if not feature_id:
+        return {
+            **state,
+            "answer": "You need to be in a feature session to link artefacts. Open a feature from the sidebar and start a session first.",
+            "citations": [],
+        }
+
+    # Pull live Jira data from retrieved_chunks (retriever already fetched it)
+    live = [c for c in state.get("retrieved_chunks", []) if c.get("content_type") == "jira_issue"]
+
+    if not live:
+        # Fallback: try to extract key and fetch directly
+        import re as _re2
+        keys = _re2.findall(r'\b([A-Z][A-Z0-9]+-\d+)\b', query)
+        if not keys:
+            return {
+                **state,
+                "answer": "I couldn't find a Jira ticket key in your message. Please include the ticket key (e.g. CL-1524) and I'll link it to the feature.",
+                "citations": [],
+            }
+        try:
+            from agent.tools.jira_tools import get_jira_issue
+            import os
+            issue = get_jira_issue(keys[0])
+            live = [{
+                "jira_key": issue["key"],
+                "jira_url": issue["url"],
+                "jira_summary": issue["summary"],
+                "content_type": "jira_issue",
+            }]
+        except Exception as e:
+            return {
+                **state,
+                "answer": f"Couldn't fetch {keys[0]} from Jira: {e}",
+                "citations": [],
+            }
+
+    chunk = live[0]
+    key = chunk.get("jira_key", "")
+    url = chunk.get("jira_url", "")
+    summary = chunk.get("jira_summary", "")
+
+    # Determine link_type from issue_type if available
+    content = chunk.get("content", "")
+    if "Story" in content:
+        link_type = "jira_story"
+    elif "Epic" in content:
+        link_type = "jira_epic"
+    else:
+        link_type = "jira_story"
+
+    pending_action = {
+        "type": "link_artefact",
+        "link_type": link_type,
+        "link_id": key,
+        "link_url": url,
+        "title": summary,
+        "feature_id": feature_id,
+    }
+    answer_with_marker = (
+        f"I'll link this to feature **{feature_id}**:\n\n"
+        f"- 📋 **{key}**: {summary}\n"
+        f"- [{url}]({url})\n\n"
+        f"Reply **yes** to confirm, or tell me if this is wrong."
+        f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
+    )
+    return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}
 
 
 def _parse_story_draft(draft_text: str, original_request: str) -> dict:
