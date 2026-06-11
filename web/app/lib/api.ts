@@ -90,6 +90,11 @@ export async function startSession(featureId: string, role: string, author: stri
   return res.json();
 }
 
+export async function deleteSession(featureId: string, sessionId: number): Promise<void> {
+  const res = await fetch(`${BASE}/features/${featureId}/sessions/${sessionId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete session");
+}
+
 // ── Conversations ─────────────────────────────────────────────────────────────
 
 export async function createConversation(topic: string): Promise<Conversation> {

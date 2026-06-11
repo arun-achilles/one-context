@@ -9,9 +9,10 @@ Feature endpoints:
     GET   /features                          — list all features
     GET   /features/{id}                     — feature detail + links + sessions
     PATCH /features/{id}                     — update name/description/status/jira_epic
-    POST  /features/{id}/sessions            — start a new session (returns conversation_id)
-    GET   /features/{id}/sessions            — list sessions with summaries
-    PATCH /features/{id}/sessions/{sid}      — update session summary
+    POST   /features/{id}/sessions           — start a new session (returns conversation_id)
+    GET    /features/{id}/sessions           — list sessions with summaries
+    PATCH  /features/{id}/sessions/{sid}     — update session summary
+    DELETE /features/{id}/sessions/{sid}     — delete a session and its messages
     POST  /features/{id}/links               — add a linked artefact
     GET   /features/{id}/links               — list linked artefacts
 
@@ -219,6 +220,23 @@ def list_sessions(feature_id: str):
 @app.patch("/features/{feature_id}/sessions/{session_id}", status_code=204)
 def update_session(feature_id: str, session_id: int, body: UpdateSessionSummary):
     update_session_summary(session_id, body.summary)
+
+
+@app.delete("/features/{feature_id}/sessions/{session_id}", status_code=204)
+def delete_session(feature_id: str, session_id: int):
+    with cursor() as cur:
+        # Get the conversation_id for this session so we can clean up messages too
+        cur.execute(
+            "SELECT conversation_id FROM feature_sessions WHERE id = %s AND feature_id = %s",
+            (session_id, feature_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        conv_id = row["conversation_id"]
+        cur.execute("DELETE FROM messages WHERE conversation_id = %s", (conv_id,))
+        cur.execute("DELETE FROM feature_sessions WHERE id = %s", (session_id,))
+        cur.execute("DELETE FROM conversations WHERE id = %s", (conv_id,))
 
 
 @app.post("/features/{feature_id}/links", response_model=LinkOut, status_code=201)

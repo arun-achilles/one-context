@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getFeature, startSession, Feature, FeatureLink } from "@/app/lib/api";
+import { getFeature, startSession, deleteSession, Feature, FeatureLink, Session } from "@/app/lib/api";
 
 interface Props {
   feature: Feature;
@@ -27,13 +27,16 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
   const [detail, setDetail] = useState<Awaited<ReturnType<typeof getFeature>> | null>(null);
   const [links, setLinks] = useState<FeatureLink[]>([]);
   const [starting, setStarting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
 
-  useEffect(() => {
+  function refreshDetail() {
     getFeature(feature.id).then(d => {
       setDetail(d);
       setLinks(d.links ?? []);
     }).catch(console.error);
-  }, [feature.id]);
+  }
+
+  useEffect(() => { refreshDetail(); }, [feature.id]);
 
   async function handleStart(role: string) {
     if (!author.trim()) return;
@@ -43,6 +46,24 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
       onStartSession(session.conversation_id, role);
     } finally {
       setStarting(null);
+    }
+  }
+
+  async function handleContinue(s: Session) {
+    // Re-enter the existing session's conversation — no new session created
+    onStartSession(s.conversation_id, s.role ?? "dev");
+  }
+
+  async function handleDeleteSession(s: Session) {
+    if (!confirm(`Delete this ${s.role ?? "session"} session by ${s.author ?? "unknown"}? This will remove all messages.`)) return;
+    setDeleting(s.id);
+    try {
+      await deleteSession(feature.id, s.id);
+      refreshDetail();
+    } catch {
+      alert("Failed to delete session");
+    } finally {
+      setDeleting(null);
     }
   }
 
@@ -146,23 +167,25 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                         {new Date(s.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    {isOwn && (
+                    <div className="flex items-center gap-1.5">
+                      {isOwn && (
+                        <button
+                          onClick={() => handleContinue(s)}
+                          disabled={starting !== null}
+                          className="text-xs px-2 py-1 rounded-lg font-semibold"
+                          style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}>
+                          Continue
+                        </button>
+                      )}
                       <button
-                        onClick={async () => {
-                          setStarting(s.role ?? "dev");
-                          try {
-                            const res = await startSession(feature.id, s.role ?? "dev", author);
-                            onStartSession(res.conversation_id, s.role ?? "dev");
-                          } finally {
-                            setStarting(null);
-                          }
-                        }}
-                        disabled={starting !== null}
-                        className="text-xs px-2 py-1 rounded-lg font-semibold"
-                        style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}>
-                        Continue
+                        onClick={() => handleDeleteSession(s)}
+                        disabled={deleting === s.id}
+                        title="Delete session"
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-xs transition-opacity opacity-40 hover:opacity-100"
+                        style={{ color: "#ef4444" }}>
+                        {deleting === s.id ? "…" : "✕"}
                       </button>
-                    )}
+                    </div>
                   </div>
                   {s.summary
                     ? <p className="text-xs leading-relaxed" style={{ color: "#64748b" }}>{s.summary}</p>
