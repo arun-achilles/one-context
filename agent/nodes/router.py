@@ -49,7 +49,12 @@ def router_node(state: AgentState) -> AgentState:
     )
 
     try:
-        data = json.loads(response.content[0].text.strip())
+        raw = response.content[0].text.strip()
+        # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw).strip()
+        data = json.loads(raw)
         intent = data.get("intent", "qa")
     except (json.JSONDecodeError, IndexError):
         intent = "qa"

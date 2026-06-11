@@ -82,7 +82,9 @@ Built ahead of Phase 3 to avoid bespoke code accumulation.
 
 | Task | ID | Status |
 |---|---|---|
-| Next.js chat UI | b5v.11/12 | 🔲 Pending |
+| Next.js scaffold + FastAPI wiring | b5v.11 | ✅ Done — `web/` with TypeScript, app router, `api.ts` → localhost:8000 |
+| Chat interface with streamed responses + citations | b5v.12 | ✅ Done — `ChatArea.tsx`, `FeaturePanel.tsx`, SSE token streaming |
+| Conversation thread browser in sidebar | b5v.13 | 🔲 Pending — feature sessions done; standalone thread list not yet |
 | Delta sync (selective re-embed on change) | b5v.10 | 🔲 Pending — Celery task exists, not selective yet |
 | Phase 1 validation gate: 10 questions vs ChatGPT | b5v.14 | 🔲 Pending |
 
@@ -176,3 +178,5 @@ Built ahead of Phase 3 to avoid bespoke code accumulation.
 | Shared conversation threads (not per-user) | The assistant is a team resource. Shared context prevents knowledge silos. | 2026-06-05 |
 | No knowledge graph until Phase 4 | Query patterns unknown until RAG is validated. | 2026-06-05 |
 | Framework extraction in Phase 5 | Build for one project first; extract when stable. | 2026-06-11 |
+| Skip retrieval for `remember` intent in graph | Retriever was setting `needs_clarification=True` (no matching chunks), hijacking the remember path before the intent check. Remember needs no knowledge lookup. | 2026-06-11 |
+| Strip markdown fences from router LLM output | Claude Haiku wraps JSON in ` ```json ``` ` blocks; plain `json.loads()` threw and silently fell back to `qa` intent on every message. | 2026-06-11 |

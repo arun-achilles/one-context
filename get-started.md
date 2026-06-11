@@ -15,7 +15,8 @@ One Context is an AI Delivery Co-Pilot. It ingests Jira, Confluence, and codebas
 | Phase 2 — Write Tools (story draft, Confluence update, memory) | ✅ Complete |
 | Phase 2 — Feature Workspace (sessions, links, context injection) | ✅ Complete |
 | Phase 3 — Code Extraction (14 repos ingested) | ✅ Complete |
-| Phase 1 — Web UI (Next.js chat interface) | 🔲 Next |
+| Phase 1 — Web UI (Next.js chat + Feature workspaces) | ✅ Complete |
+| Phase 1 — Conversation thread browser (sidebar) | 🔲 Pending |
 | Phase 3 — Role-based retrieval, PR webhook | 🔲 Pending |
 | Phase 4 — Knowledge Graph (Neo4j) | 🔲 Future |
 
@@ -102,6 +103,25 @@ Example interactions:
 uvicorn agent.api:app --reload --port 8000
 # Docs at http://localhost:8000/docs
 ```
+
+---
+
+## Web UI
+
+```bash
+# In a separate terminal
+cd web
+npm install      # first time only
+npm run dev      # http://localhost:3000
+```
+
+The web UI connects to the FastAPI backend at `http://localhost:8000` by default. To point it at a different host set `NEXT_PUBLIC_API_URL` in `web/.env.local`.
+
+**What you can do in the UI:**
+- **General chat** — ask anything across Jira, Confluence, and codebase knowledge
+- **Feature workspaces** — create a Feature (e.g. "Gift Cards"), open a role session (PO / Tech Lead / Dev), and the agent carries full context of all prior sessions
+- **Remember** — type `remember: <decision>` and confirm to persist to team memory; auto-surfaced in all future answers
+- **Draft stories** — describe a feature idea; the agent drafts a Jira story grounded in existing capabilities; say `yes` to create it
 
 ---
 

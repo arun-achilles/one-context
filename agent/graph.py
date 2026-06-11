@@ -8,9 +8,13 @@ from agent.nodes.responder import responder_node
 
 
 def _route_after_route(state: AgentState) -> str:
-    """After routing, skip retrieve+reason for confirmations — go straight to act."""
-    if state.get("intent") == "confirm_action":
+    """After routing, skip retrieve+reason for confirmations — go straight to act.
+    Skip retrieval for remember — no knowledge lookup needed to save a fact."""
+    intent = state.get("intent")
+    if intent == "confirm_action":
         return "act"
+    if intent == "remember":
+        return "reason"
     return "retrieve"
 
 
@@ -29,7 +33,7 @@ def build_graph():
     graph.add_conditional_edges(
         "route",
         _route_after_route,
-        {"act": "act", "retrieve": "retrieve"},
+        {"act": "act", "retrieve": "retrieve", "reason": "reason"},
     )
 
     graph.add_edge("retrieve", "reason")

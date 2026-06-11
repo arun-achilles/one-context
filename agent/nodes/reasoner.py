@@ -58,7 +58,10 @@ Reply **yes** to create this story in Jira, or tell me what to change."""
 # ── Memory ───────────────────────────────────────────────────────────────────
 
 REMEMBER_SYSTEM = """You are One Context. The user wants to save something to team memory.
-Extract the key fact or decision from their message and confirm what you're saving."""
+
+Extract the key fact, decision, or agreement from their message.
+- If a specific fact is present, reply with JUST the fact (1-3 sentences, no preamble).
+- If the message is vague (e.g. "remember these decisions" with nothing specific), reply with exactly: ASK_FOR_CONTENT"""
 
 
 def reasoner_node(state: AgentState) -> AgentState:
@@ -153,12 +156,14 @@ def _prepare_memory(state: AgentState, query: str) -> AgentState:
         system=REMEMBER_SYSTEM,
         messages=[{"role": "user", "content": query}],
     )
-    # Extract what to remember — everything after "remember:" / "note:" keywords
-    fact = query
-    for prefix in ["remember:", "note:", "save:", "record:"]:
-        if prefix in query.lower():
-            fact = query[query.lower().index(prefix) + len(prefix):].strip()
-            break
+    fact = response.content[0].text.strip()
+
+    if fact == "ASK_FOR_CONTENT":
+        return {
+            **state,
+            "answer": "What would you like me to remember? Share the decision or fact and I'll save it to team memory.",
+            "citations": [],
+        }
 
     pending_action = {
         "type": "remember",
