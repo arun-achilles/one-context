@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One Context — AI Delivery Co-Pilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #060d1a;
+    --bg2:       #0d1828;
+    --bg3:       #111f33;
+    --card:      #131f30;
+    --card2:     #1a2840;
+    --border:    #1e3048;
+    --border2:   #253650;
+    --indigo:    #6366f1;
+    --indigo2:   #818cf8;
+    --cyan:      #06b6d4;
+    --cyan2:     #22d3ee;
+    --green:     #10b981;
+    --green2:    #34d399;
+    --amber:     #f59e0b;
+    --amber2:    #fbbf24;
+    --rose:      #f43f5e;
+    --text:      #e2e8f0;
+    --text2:     #94a3b8;
+    --text3:     #64748b;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── NAV ─────────────────────────────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(6, 13, 26, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 60px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-brand {
+    font-size: 1rem; font-weight: 700;
+    background: linear-gradient(135deg, var(--indigo2), var(--cyan2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+  }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a {
+    color: var(--text2); text-decoration: none; font-size: 0.82rem;
+    font-weight: 500; letter-spacing: 0.02em; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--cyan2); }
+
+  /* ── SECTIONS ───────────────────────────────────────────────────── */
+  section { padding: 100px 2rem; max-width: 1200px; margin: 0 auto; }
+  section:first-of-type { padding-top: 140px; }
+
+  .section-label {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--indigo2);
+    margin-bottom: 0.75rem;
+  }
+  h1 { font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.05; }
+  h2 { font-size: clamp(1.8rem, 3vw, 2.4rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 1rem; }
+  h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  p  { color: var(--text2); line-height: 1.75; }
+
+  .gradient-text {
+    background: linear-gradient(135deg, var(--indigo2) 0%, var(--cyan2) 60%, var(--green2) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  /* ── HERO ────────────────────────────────────────────────────────── */
+  #hero {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: center; align-items: flex-start;
+    position: relative; overflow: hidden; padding-top: 120px;
+  }
+  .hero-glow {
+    position: absolute; top: -200px; right: -200px;
+    width: 700px; height: 700px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-glow2 {
+    position: absolute; bottom: -100px; left: -100px;
+    width: 500px; height: 500px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 100px; padding: 0.35rem 1rem;
+    font-size: 0.78rem; font-weight: 600; color: var(--indigo2);
+    margin-bottom: 1.5rem; letter-spacing: 0.05em;
+  }
+  .hero-badge::before { content: '●'; color: var(--green2); font-size: 0.6rem; }
+  .hero-subtitle {
+    font-size: clamp(1rem, 2vw, 1.25rem); color: var(--text2);
+    max-width: 600px; margin: 1.5rem 0 2.5rem;
+    font-weight: 400;
+  }
+  .hero-stats {
+    display: flex; gap: 3rem; margin-top: 3rem;
+    padding-top: 2rem; border-top: 1px solid var(--border);
+  }
+  .stat-val { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; }
+  .stat-lbl { font-size: 0.78rem; color: var(--text3); font-weight: 500; margin-top: 0.15rem; }
+
+  /* ── BUTTONS ─────────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600;
+    font-size: 0.9rem; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--indigo), #4f46e5);
+    color: white;
+    box-shadow: 0 0 20px rgba(99,102,241,0.35);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(99,102,241,0.5); }
+  .btn-ghost {
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--indigo2); color: var(--indigo2); }
+
+  /* ── CARDS ───────────────────────────────────────────────────────── */
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+  .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.75rem;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .card-icon {
+    width: 44px; height: 44px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; margin-bottom: 1rem;
+  }
+
+  /* ── PROBLEM SECTION ─────────────────────────────────────────────── */
+  .problem-card .card-icon { background: rgba(244,63,94,0.12); }
+  .problem-quote {
+    font-size: 0.9rem; color: var(--text2); font-style: italic;
+    border-left: 2px solid var(--border2); padding-left: 1rem;
+    margin-top: 0.75rem; line-height: 1.7;
+  }
+
+  /* ── PRINCIPLE BOX ───────────────────────────────────────────────── */
+  .principle-box {
+    background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(6,182,212,0.06));
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 20px; padding: 2.5rem;
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 1px;
+    overflow: hidden;
+  }
+  .principle-item {
+    padding: 1.75rem; text-align: center;
+    background: rgba(6,13,26,0.4); position: relative;
+  }
+  .principle-item + .principle-item::before {
+    content: ''; position: absolute; left: 0; top: 20%; bottom: 20%;
+    width: 1px; background: var(--border);
+  }
+  .principle-source {
+    font-size: 1.1rem; font-weight: 800; margin-bottom: 0.25rem;
+  }
+  .principle-desc { font-size: 0.8rem; color: var(--text3); }
+  .principle-tag {
+    display: inline-block; padding: 0.2rem 0.6rem;
+    border-radius: 100px; font-size: 0.7rem; font-weight: 600;
+    margin-top: 0.5rem;
+  }
+
+  /* ── LIFECYCLE ───────────────────────────────────────────────────── */
+  .lifecycle {
+    display: flex; flex-direction: column; gap: 0;
+    position: relative;
+  }
+  .lifecycle::before {
+    content: ''; position: absolute; left: 28px; top: 50px; bottom: 50px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--indigo), var(--cyan), var(--green));
+  }
+  .lifecycle-step {
+    display: flex; gap: 1.5rem; padding: 1.5rem 0;
+    position: relative;
+  }
+  .lifecycle-dot {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0; z-index: 1;
+    border: 2px solid var(--border2);
+  }
+  .lifecycle-content { flex: 1; }
+  .lifecycle-role {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 0.3rem;
+  }
+  .lifecycle-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .lifecycle-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+  .action-pill {
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 100px; padding: 0.25rem 0.75rem;
+    font-size: 0.75rem; color: var(--text2);
+  }
+
+  /* ── FEATURE WORKSPACE ───────────────────────────────────────────── */
+  .feature-demo {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+  }
+  .feature-demo-header {
+    background: var(--bg3); border-bottom: 1px solid var(--border);
+    padding: 0.85rem 1.25rem;
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.8rem; font-weight: 600; color: var(--text2);
+  }
+  .feature-demo-body { padding: 1.5rem; }
+  .feature-id {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 6px; padding: 0.2rem 0.6rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 500;
+    color: var(--indigo2);
+  }
+  .session-row {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: 0.85rem 0; border-bottom: 1px solid var(--border);
+  }
+  .session-row:last-child { border-bottom: none; }
+  .session-role-badge {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 4px;
+    white-space: nowrap; flex-shrink: 0; margin-top: 0.1rem;
+  }
+  .role-po   { background: rgba(99,102,241,0.15); color: var(--indigo2); }
+  .role-tl   { background: rgba(6,182,212,0.15);  color: var(--cyan2); }
+  .role-dev  { background: rgba(16,185,129,0.15); color: var(--green2); }
+  .session-summary { font-size: 0.82rem; color: var(--text2); line-height: 1.5; }
+  .session-links { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+  .link-chip {
+    font-size: 0.68rem; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 4px; padding: 0.15rem 0.5rem; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── ARCHITECTURE ────────────────────────────────────────────────── */
+  .arch-diagram {
+    display: flex; flex-direction: column; gap: 1px;
+    border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  }
+  .arch-layer {
+    background: var(--card); padding: 1.25rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    display: grid; grid-template-columns: 180px 1fr; gap: 1.5rem; align-items: center;
+  }
+  .arch-layer:last-child { border-bottom: none; }
+  .arch-layer-name {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .arch-layer-sub { font-size: 0.72rem; color: var(--text3); margin-top: 0.2rem; }
+  .arch-components { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .arch-chip {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.3rem 0.75rem;
+    font-size: 0.76rem; color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .arch-chip.highlight {
+    border-color: rgba(99,102,241,0.4);
+    color: var(--indigo2);
+    background: rgba(99,102,241,0.08);
+  }
+  .arch-chip.done {
+    border-color: rgba(16,185,129,0.3);
+    color: var(--green2);
+    background: rgba(16,185,129,0.06);
+  }
+  .arch-arrow {
+    text-align: center; color: var(--text3); font-size: 1.1rem;
+    padding: 0.3rem; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    grid-column: 1/-1;
+  }
+
+  /* ── PROGRESS ────────────────────────────────────────────────────── */
+  .phase-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 1.75rem;
+  }
+  .phase-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+  .phase-badge {
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 0.25rem 0.65rem; border-radius: 100px;
+  }
+  .phase-done   { background: rgba(16,185,129,0.15); color: var(--green2); }
+  .phase-wip    { background: rgba(245,158,11,0.15); color: var(--amber2); }
+  .phase-next   { background: rgba(99,102,241,0.15); color: var(--indigo2); }
+  .phase-future { background: rgba(100,116,139,0.15); color: var(--text3); }
+  .progress-bar {
+    height: 4px; background: var(--bg3); border-radius: 100px;
+    margin: 0.75rem 0 1rem; overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 100px; transition: width 1s ease; }
+  .task-list { list-style: none; }
+  .task-list li {
+    display: flex; align-items: flex-start; gap: 0.6rem;
+    font-size: 0.82rem; color: var(--text2); padding: 0.3rem 0;
+  }
+  .task-list li::before { flex-shrink: 0; margin-top: 0.15rem; font-size: 0.7rem; }
+  .task-list li.done::before { content: '✓'; color: var(--green2); }
+  .task-list li.open::before { content: '○'; color: var(--text3); }
+  .task-list li.next::before { content: '▶'; color: var(--indigo2); }
+
+  /* ── TECH STACK ──────────────────────────────────────────────────── */
+  .tech-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem 1.5rem;
+    display: flex; align-items: center; gap: 1rem;
+  }
+  .tech-icon {
+    width: 40px; height: 40px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+  }
+  .tech-name { font-size: 0.9rem; font-weight: 700; }
+  .tech-desc { font-size: 0.75rem; color: var(--text3); margin-top: 0.1rem; }
+
+  /* ── DIVIDER ─────────────────────────────────────────────────────── */
+  .divider { height: 1px; background: var(--border); margin: 0 2rem; }
+
+  /* ── FOOTER ──────────────────────────────────────────────────────── */
+  footer {
+    text-align: center; padding: 3rem 2rem;
+    color: var(--text3); font-size: 0.8rem; border-top: 1px solid var(--border);
+  }
+
+  /* ── CALLOUT ─────────────────────────────────────────────────────── */
+  .callout {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(6,182,212,0.08));
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 12px; padding: 1.25rem 1.5rem;
+    font-size: 0.9rem; color: var(--text2); line-height: 1.7;
+  }
+  .callout strong { color: var(--text); }
+
+  /* ── ANIMATIONS ──────────────────────────────────────────────────── */
+  .fade-in { opacity: 0; transform: translateY(20px); transition: opacity 0.6s, transform 0.6s; }
+  .fade-in.visible { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">⬡ One Context</div>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="#vision">Vision</a>
+    <a href="#lifecycle">How It Works</a>
+    <a href="#feature">Features</a>
+    <a href="#architecture">Architecture</a>
+    <a href="#progress">Progress</a>
+    <a href="#stack">Tech Stack</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+  <div class="hero-badge">AI Delivery Intelligence Platform</div>
+  <h1>One Context<br><span class="gradient-text">AI Delivery Co-Pilot</span></h1>
+  <p class="hero-subtitle">
+    A shared intelligence layer that continuously understands your Jira history, Confluence knowledge, and source code — so every role in the delivery lifecycle can discover, plan, and build without losing context.
+  </p>
+  <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+    <a href="#vision" class="btn btn-primary">Explore the Vision →</a>
+    <a href="#progress" class="btn btn-ghost">View Progress</a>
+  </div>
+  <div class="hero-stats">
+    <div>
+      <div class="stat-val gradient-text">1,653</div>
+      <div class="stat-lbl">Knowledge chunks indexed</div>
+    </div>
+    <div>
+      <div class="stat-val gradient-text">14</div>
+      <div class="stat-lbl">Repositories ingested</div>
+    </div>
+    <div>
+      <div class="stat-val gradient-text">3</div>
+      <div class="stat-lbl">Source systems connected</div>
+    </div>
+    <div>
+      <div class="stat-val gradient-text">51%</div>
+      <div class="stat-lbl">Roadmap complete</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="section-label">The Problem</div>
+  <h2>Delivery context gets <span class="gradient-text">lost every sprint</span></h2>
+  <p style="max-width:640px; margin-bottom:2.5rem;">Each role holds only a fragment of the picture. The same discovery work is repeated. Decisions made in Slack disappear. New team members take weeks to get up to speed.</p>
+  <div class="grid-3">
+    <div class="card problem-card fade-in">
+      <div class="card-icon" style="background:rgba(244,63,94,0.12)">📋</div>
+      <h3>Product Owner</h3>
+      <p class="problem-quote">"I'm writing stories without knowing what's already built in the codebase. We keep re-discovering the same things."</p>
+    </div>
+    <div class="card problem-card fade-in">
+      <div class="card-icon" style="background:rgba(244,63,94,0.12)">🏗️</div>
+      <h3>Tech Lead</h3>
+      <p class="problem-quote">"I'm assessing feasibility without a complete picture of which services are involved or what architectural decisions were made."</p>
+    </div>
+    <div class="card problem-card fade-in">
+      <div class="card-icon" style="background:rgba(244,63,94,0.12)">💻</div>
+      <h3>Developer</h3>
+      <p class="problem-quote">"I pick up a story and have no idea why it was built this way. The context is scattered across Confluence, Slack, and tribal knowledge."</p>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- VISION -->
+<section id="vision">
+  <div class="section-label">The Vision</div>
+  <h2>The <span class="gradient-text">Ground Truth</span> Principle</h2>
+  <p style="max-width:600px; margin-bottom:2rem;">Three sources, three views of the same system. They diverge constantly. One Context makes all three searchable — and when they conflict, the code wins.</p>
+  <div class="principle-box fade-in">
+    <div class="principle-item">
+      <div style="font-size:2rem; margin-bottom:0.5rem;">📋</div>
+      <div class="principle-source">Jira</div>
+      <div class="principle-desc">1,278 issues ingested</div>
+      <span class="principle-tag" style="background:rgba(245,158,11,0.15);color:var(--amber2);">What was planned</span>
+    </div>
+    <div class="principle-item">
+      <div style="font-size:2rem; margin-bottom:0.5rem;">📄</div>
+      <div class="principle-source">Confluence</div>
+      <div class="principle-desc">83 pages ingested</div>
+      <span class="principle-tag" style="background:rgba(99,102,241,0.15);color:var(--indigo2);">What was documented</span>
+    </div>
+    <div class="principle-item">
+      <div style="font-size:2rem; margin-bottom:0.5rem;">⌨️</div>
+      <div class="principle-source">Codebase</div>
+      <div class="principle-desc">14 repos · 21k files</div>
+      <span class="principle-tag" style="background:rgba(16,185,129,0.15);color:var(--green2);">What was actually built</span>
+    </div>
+  </div>
+  <div class="callout fade-in" style="margin-top:1.5rem;">
+    <strong>Why the codebase is different:</strong> Stories get closed without all ACs implemented. Confluence pages go stale. The codebase is the only source of truth for what is <em>actually</em> running in production. One Context translates it into business language so POs can ask "do we support X?" and get an answer grounded in real code — not a ticket marked done 18 months ago.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- LIFECYCLE -->
+<section id="lifecycle">
+  <div class="section-label">How It Works</div>
+  <h2>Every role. <span class="gradient-text">One shared context.</span></h2>
+  <p style="max-width:600px; margin-bottom:2.5rem;">The co-pilot serves each role in sequence. Each role's output becomes context for the next.</p>
+  <div class="grid-2" style="align-items:start;">
+    <div class="lifecycle fade-in">
+      <div class="lifecycle-step">
+        <div class="lifecycle-dot" style="background:rgba(99,102,241,0.12); border-color:rgba(99,102,241,0.4);">🔍</div>
+        <div class="lifecycle-content">
+          <div class="lifecycle-role" style="color:var(--indigo2);">Foundation</div>
+          <div class="lifecycle-title">Understand what exists</div>
+          <p style="font-size:0.82rem;">Historic Jira + Confluence + Codebase loaded into vector search. Any team member can ask what the system does today.</p>
+          <div class="lifecycle-actions">
+            <span class="action-pill">"What does the QR service do?"</span>
+            <span class="action-pill">"Have we built X before?"</span>
+          </div>
+        </div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="lifecycle-dot" style="background:rgba(99,102,241,0.12); border-color:rgba(99,102,241,0.4);">📋</div>
+        <div class="lifecycle-content">
+          <div class="lifecycle-role" style="color:var(--indigo2);">PO / BA</div>
+          <div class="lifecycle-title">Discover, plan, and create</div>
+          <p style="font-size:0.82rem;">Search existing capabilities. Draft epics and stories grounded in what's already built. Write back to Jira and Confluence.</p>
+          <div class="lifecycle-actions">
+            <span class="action-pill">Discover capabilities</span>
+            <span class="action-pill">Draft stories with ACs</span>
+            <span class="action-pill">Create in Jira</span>
+          </div>
+        </div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="lifecycle-dot" style="background:rgba(6,182,212,0.12); border-color:rgba(6,182,212,0.4);">🏗️</div>
+        <div class="lifecycle-content">
+          <div class="lifecycle-role" style="color:var(--cyan2);">Tech Lead</div>
+          <div class="lifecycle-title">Analyse and design</div>
+          <p style="font-size:0.82rem;">Load the Feature context. Understand which services are involved. Draft tech tasks and architecture. All linked back to the Feature.</p>
+          <div class="lifecycle-actions">
+            <span class="action-pill">Service impact map</span>
+            <span class="action-pill">Tech tasks in Jira</span>
+            <span class="action-pill">Architecture docs</span>
+          </div>
+        </div>
+      </div>
+      <div class="lifecycle-step">
+        <div class="lifecycle-dot" style="background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.4);">💻</div>
+        <div class="lifecycle-content">
+          <div class="lifecycle-role" style="color:var(--green2);">Developer</div>
+          <div class="lifecycle-title">Implement with full context</div>
+          <p style="font-size:0.82rem;">Open the Feature. Get spec + tech design + relevant code + decisions. No more tribal knowledge archaeology.</p>
+          <div class="lifecycle-actions">
+            <span class="action-pill">Why it was built this way</span>
+            <span class="action-pill">Which code to touch</span>
+            <span class="action-pill">Prior decisions</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:1rem;">
+      <div class="card fade-in">
+        <h3 style="color:var(--indigo2); margin-bottom:0.75rem;">🧠 Team Memory</h3>
+        <p style="font-size:0.84rem;">Decisions that live only in someone's head are captured explicitly and surfaced automatically in every relevant conversation.</p>
+        <div style="background:var(--bg3); border-radius:8px; padding:1rem; margin-top:1rem; font-size:0.8rem; color:var(--text2); font-family:'JetBrains Mono',monospace; line-height:1.8;">
+          <span style="color:var(--text3);">You:</span> Remember: we decided not to use WebSockets because the infra team can't support it yet<br>
+          <span style="color:var(--green2);">Agent:</span> Got it — saving to team memory. Reply yes to confirm.<br>
+          <span style="color:var(--text3);">You:</span> yes<br>
+          <span style="color:var(--green2);">Agent:</span> ✓ Saved. Will surface whenever WebSockets or infra is mentioned.
+        </div>
+      </div>
+      <div class="card fade-in">
+        <h3 style="color:var(--cyan2); margin-bottom:0.75rem;">✍️ Story Drafting</h3>
+        <p style="font-size:0.84rem;">From rough idea to Jira story in under 5 minutes — grounded in existing capabilities and past decisions.</p>
+        <div style="background:var(--bg3); border-radius:8px; padding:1rem; margin-top:1rem; font-size:0.8rem; color:var(--text2); font-family:'JetBrains Mono',monospace; line-height:1.8;">
+          <span style="color:var(--text3);">You:</span> Draft a story for QR scan reliability<br>
+          <span style="color:var(--green2);">Agent:</span> <span style="color:var(--amber2);">**Title:**</span> Improve QR scan in low-light…<br>
+          <span style="color:var(--amber2);">**ACs:**</span> ≥95% success rate, visual feedback…<br>
+          <span style="color:var(--amber2);">**Note:**</span> qr-manager-service owns scan events<br>
+          Reply <span style="color:var(--green2);">yes</span> to create in Jira
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FEATURE WORKSPACE -->
+<section id="feature">
+  <div class="section-label">Key Innovation</div>
+  <h2>Feature <span class="gradient-text">Workspaces</span></h2>
+  <p style="max-width:640px; margin-bottom:2rem;">A Feature is a named, persistent delivery workspace. It exists before a Jira Epic and creates one. Every role opens a Session — a fresh conversation that starts with a summary of everything discussed before.</p>
+
+  <div class="grid-3" style="margin-bottom:2rem;">
+    <div class="card fade-in">
+      <div class="card-icon" style="background:rgba(99,102,241,0.1); font-size:1.4rem;">🗂️</div>
+      <h3>Persistent across roles</h3>
+      <p style="font-size:0.84rem;">PO, Tech Lead, and Dev all work in the same Feature. No more "what did the PO decide?" — it's right there in the session history.</p>
+    </div>
+    <div class="card fade-in">
+      <div class="card-icon" style="background:rgba(6,182,212,0.1); font-size:1.4rem;">📌</div>
+      <h3>Auto-linked artefacts</h3>
+      <p style="font-size:0.84rem;">Every Jira story, Confluence page, and PR created inside a session is automatically linked to the Feature. OC-001 becomes the single source of truth.</p>
+    </div>
+    <div class="card fade-in">
+      <div class="card-icon" style="background:rgba(16,185,129,0.1); font-size:1.4rem;">⚡</div>
+      <h3>Session briefs</h3>
+      <p style="font-size:0.84rem;">Each new session starts with a generated brief of prior sessions — decisions made, artefacts created, open questions. No hunting through history.</p>
+    </div>
+  </div>
+
+  <div class="feature-demo fade-in">
+    <div class="feature-demo-header">
+      <span>Feature Workspace</span>
+      <span class="feature-id">OC-001</span>
+      <span style="flex:1;"></span>
+      <span style="font-size:0.72rem; background:rgba(245,158,11,0.1); color:var(--amber2); border:1px solid rgba(245,158,11,0.25); border-radius:100px; padding:0.15rem 0.6rem;">in_progress</span>
+    </div>
+    <div class="feature-demo-body">
+      <div style="margin-bottom:1.25rem;">
+        <div style="font-size:1rem; font-weight:700; margin-bottom:0.25rem;">QR Code Reliability</div>
+        <div style="font-size:0.82rem; color:var(--text3);">Improve scan success rate in low-light exhibition environments</div>
+      </div>
+      <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--text3); margin-bottom:0.75rem;">Sessions</div>
+      <div class="session-row">
+        <span class="session-role-badge role-po">PO</span>
+        <div>
+          <div class="session-summary">Discovered existing scan failure logging in qr-manager-service. Drafted epic CL-890 and 3 stories covering scan retry logic, feedback UX, and metrics.</div>
+          <div class="session-links">
+            <span class="link-chip">CL-890</span>
+            <span class="link-chip">CL-891</span>
+            <span class="link-chip">CL-892</span>
+            <span class="link-chip">CL-893</span>
+          </div>
+        </div>
+      </div>
+      <div class="session-row">
+        <span class="session-role-badge role-tl">Tech Lead</span>
+        <div>
+          <div class="session-summary">Analysed impact: qr-manager-service + digital-asx-platform-ui affected. Created 4 tech tasks. Noted: scan events must stay in qr-manager, not leads service.</div>
+          <div class="session-links">
+            <span class="link-chip">CL-894</span>
+            <span class="link-chip">CL-895</span>
+            <span class="link-chip">Confluence: Tech Design</span>
+          </div>
+        </div>
+      </div>
+      <div class="session-row" style="opacity:0.5;">
+        <span class="session-role-badge role-dev">Dev</span>
+        <div>
+          <div class="session-summary" style="font-style:italic;">Next session — developer opens OC-001 and gets full context above automatically.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+  <div class="section-label">Architecture</div>
+  <h2>Four layers, <span class="gradient-text">one pipeline</span></h2>
+  <p style="max-width:600px; margin-bottom:2rem;">Data flows from source systems through a hygiene pipeline into a vector knowledge store. The LangGraph agent retrieves from the store and writes back via confirmed actions.</p>
+
+  <div class="arch-diagram fade-in">
+    <div class="arch-layer" style="background:linear-gradient(90deg,rgba(99,102,241,0.06),var(--card));">
+      <div>
+        <div class="arch-layer-name" style="color:var(--indigo2);">Data Sources</div>
+        <div class="arch-layer-sub">Three views of the system</div>
+      </div>
+      <div class="arch-components">
+        <span class="arch-chip done">Jira (1,278 issues)</span>
+        <span class="arch-chip done">Confluence (83 pages)</span>
+        <span class="arch-chip done">14 Git repos (21k files)</span>
+      </div>
+    </div>
+    <div style="text-align:center; padding:0.4rem; background:var(--bg2); color:var(--text3); font-size:0.8rem; border-bottom:1px solid var(--border);">
+      ↓ &nbsp; connectors/ — BaseConnector interface, pluggable per source
+    </div>
+    <div class="arch-layer">
+      <div>
+        <div class="arch-layer-name" style="color:var(--amber2);">Hygiene Pipeline</div>
+        <div class="arch-layer-sub">hygiene/</div>
+      </div>
+      <div class="arch-components">
+        <span class="arch-chip done">Extract</span>
+        <span class="arch-chip done">Classify (Haiku)</span>
+        <span class="arch-chip done">Quality Score</span>
+        <span class="arch-chip done">Staleness</span>
+        <span class="arch-chip done">Dedup</span>
+        <span class="arch-chip done">Enrich</span>
+        <span class="arch-chip done">Code → Business Summary</span>
+      </div>
+    </div>
+    <div style="text-align:center; padding:0.4rem; background:var(--bg2); color:var(--text3); font-size:0.8rem; border-bottom:1px solid var(--border);">
+      ↓ &nbsp; hygiene_results.json → ingestion/
+    </div>
+    <div class="arch-layer">
+      <div>
+        <div class="arch-layer-name" style="color:var(--cyan2);">Knowledge Store</div>
+        <div class="arch-layer-sub">PostgreSQL + pgvector</div>
+      </div>
+      <div class="arch-components">
+        <span class="arch-chip done">chunks (1,653 embedded)</span>
+        <span class="arch-chip done">memory (team decisions)</span>
+        <span class="arch-chip done">sources (1,039)</span>
+        <span class="arch-chip done">conversations + messages</span>
+        <span class="arch-chip highlight">features (OC-001…)</span>
+        <span class="arch-chip highlight">feature_sessions</span>
+        <span class="arch-chip highlight">feature_links</span>
+      </div>
+    </div>
+    <div style="text-align:center; padding:0.4rem; background:var(--bg2); color:var(--text3); font-size:0.8rem; border-bottom:1px solid var(--border);">
+      ↓ &nbsp; cosine similarity (all-mpnet-base-v2, 768d, local)
+    </div>
+    <div class="arch-layer" style="background:linear-gradient(90deg,rgba(16,185,129,0.05),var(--card));">
+      <div>
+        <div class="arch-layer-name" style="color:var(--green2);">LangGraph Agent</div>
+        <div class="arch-layer-sub">FastAPI + Celery</div>
+      </div>
+      <div class="arch-components">
+        <span class="arch-chip done">route</span>
+        <span class="arch-chip done">retrieve (vector + memory)</span>
+        <span class="arch-chip done">reason (Sonnet 4.6)</span>
+        <span class="arch-chip done">act (write + confirm)</span>
+        <span class="arch-chip done">respond (SSE stream)</span>
+        <span class="arch-chip highlight">Feature context injection</span>
+        <span class="arch-chip done">Webhooks</span>
+        <span class="arch-chip done">Celery sync_all</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3" style="margin-top:1.5rem;">
+    <div class="card fade-in">
+      <h3 style="color:var(--green2);">✓ Live Tools</h3>
+      <ul class="task-list" style="margin-top:0.5rem;">
+        <li class="done">search_knowledge (pgvector)</li>
+        <li class="done">search_memory (team decisions)</li>
+        <li class="done">get_jira_issue / search_jira</li>
+        <li class="done">search_confluence</li>
+        <li class="done">create_jira_story (+ confirm)</li>
+        <li class="done">update_confluence_page</li>
+        <li class="done">remember (team memory)</li>
+        <li class="done">Feature workspace tools</li>
+      </ul>
+    </div>
+    <div class="card fade-in">
+      <h3 style="color:var(--amber2);">⏳ In Progress</h3>
+      <ul class="task-list" style="margin-top:0.5rem;">
+        <li class="next">Web UI (Next.js chat)</li>
+        <li class="next">Role-based retrieval weights</li>
+        <li class="next">PR merge webhook → re-index</li>
+        <li class="next">Phase 1 + 2 validation gates</li>
+      </ul>
+    </div>
+    <div class="card fade-in">
+      <h3 style="color:var(--text3);">🔮 Planned</h3>
+      <ul class="task-list" style="margin-top:0.5rem;">
+        <li class="open">Knowledge Graph (Neo4j)</li>
+        <li class="open">Dependency mapping</li>
+        <li class="open">Feasibility analysis flow</li>
+        <li class="open">Multi-project Docker image</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PROGRESS -->
+<section id="progress">
+  <div class="section-label">Delivery Progress</div>
+  <h2>Where we are on the <span class="gradient-text">roadmap</span></h2>
+  <p style="max-width:600px; margin-bottom:2.5rem;">Five phases, each gated on the previous. No phase starts until the previous one proves value.</p>
+
+  <div style="display:flex; flex-direction:column; gap:1.25rem;">
+
+    <div class="phase-card fade-in">
+      <div class="phase-header">
+        <div>
+          <h3>Phase 0 — Data Hygiene Pipeline</h3>
+          <p style="font-size:0.8rem; margin-top:0.2rem;">Clean, classify, and enrich before any ingestion</p>
+        </div>
+        <span class="phase-badge phase-done">Complete</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:100%; background:linear-gradient(90deg,var(--green),var(--green2));"></div></div>
+      <ul class="task-list">
+        <li class="done">Jira + Confluence extractors (board-based)</li>
+        <li class="done">LLM classifier + quality scorer (Claude Haiku)</li>
+        <li class="done">Staleness detection + deduplication</li>
+        <li class="done">Run against real data: 1,278 issues + 83 pages</li>
+      </ul>
+    </div>
+
+    <div class="phase-card fade-in">
+      <div class="phase-header">
+        <div>
+          <h3>Phase 1 — Grounded Assistant</h3>
+          <p style="font-size:0.8rem; margin-top:0.2rem;">Any team member asks questions grounded in real data</p>
+        </div>
+        <span class="phase-badge phase-wip">~85% Done</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:85%; background:linear-gradient(90deg,var(--amber),var(--amber2));"></div></div>
+      <ul class="task-list">
+        <li class="done">PostgreSQL + pgvector knowledge store</li>
+        <li class="done">LangGraph agent (route → retrieve → reason → act → respond)</li>
+        <li class="done">Live Jira + Confluence lookup tools</li>
+        <li class="done">FastAPI + Celery + Docker Compose</li>
+        <li class="next">Next.js Web UI (chat interface)</li>
+        <li class="open">Validation gate: 10 questions vs ChatGPT</li>
+      </ul>
+    </div>
+
+    <div class="phase-card fade-in">
+      <div class="phase-header">
+        <div>
+          <h3>Phase 2 — Write + Remember</h3>
+          <p style="font-size:0.8rem; margin-top:0.2rem;">PO creates stories; team saves decisions; Feature workspaces</p>
+        </div>
+        <span class="phase-badge phase-wip">~90% Done</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:90%; background:linear-gradient(90deg,var(--amber),var(--amber2));"></div></div>
+      <ul class="task-list">
+        <li class="done">Story drafting flow with confirmation</li>
+        <li class="done">create_jira_story, update_confluence_page</li>
+        <li class="done">Team memory (remember tool + semantic search)</li>
+        <li class="done">Feature workspaces — sessions, links, context injection</li>
+        <li class="open">Validation gate: story creation time &lt; 5 min</li>
+      </ul>
+    </div>
+
+    <div class="phase-card fade-in">
+      <div class="phase-header">
+        <div>
+          <h3>Phase 3 — Codebase Knowledge</h3>
+          <p style="font-size:0.8rem; margin-top:0.2rem;">The codebase is the bible — make it searchable for POs</p>
+        </div>
+        <span class="phase-badge phase-wip">~70% Done</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:70%; background:linear-gradient(90deg,var(--indigo),var(--indigo2));"></div></div>
+      <ul class="task-list">
+        <li class="done">Local git extractor (pathlib + gitpython, any host)</li>
+        <li class="done">Code → business-language module summaries (Claude Haiku)</li>
+        <li class="done">Git history as shipped_feature narrative</li>
+        <li class="done">14 repos ingested (ASX + Colleqt services)</li>
+        <li class="next">Role-based retrieval weighting (PO vs Dev)</li>
+        <li class="next">PR merge webhook → selective re-index</li>
+        <li class="open">Validation gate: 10 PO questions from code only</li>
+      </ul>
+    </div>
+
+    <div class="phase-card fade-in" style="opacity:0.65;">
+      <div class="phase-header">
+        <div>
+          <h3>Phase 4 — Graph + Dependencies</h3>
+          <p style="font-size:0.8rem; margin-top:0.2rem;">Structural queries: impact analysis, feasibility, dependency maps</p>
+        </div>
+        <span class="phase-badge phase-future">Planned</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:0%; background:var(--border2);"></div></div>
+      <ul class="task-list">
+        <li class="open">Neo4j alongside pgvector</li>
+        <li class="open">Relationship extraction: LLM → graph</li>
+        <li class="open">query_graph(natural_language) tool</li>
+        <li class="open">Feasibility analysis flow for Tech Leads</li>
+      </ul>
+    </div>
+
+    <div class="phase-card fade-in" style="opacity:0.65;">
+      <div class="phase-header">
+        <div>
+          <h3>Phase 5 — Multi-Project Framework</h3>
+          <p style="font-size:0.8rem; margin-top:0.2rem;">Any team adopts in &lt;30 min: onecontext.yaml + docker compose up</p>
+        </div>
+        <span class="phase-badge phase-future">Planned</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:40%; background:var(--border2);"></div></div>
+      <ul class="task-list">
+        <li class="done">BaseConnector interface + registry (pluggable sources)</li>
+        <li class="done">onecontext.yaml config parser</li>
+        <li class="done">Docker Compose stack (5 services)</li>
+        <li class="open">Published Docker image</li>
+        <li class="open">Adoption guide + example connector</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- TECH STACK -->
+<section id="stack">
+  <div class="section-label">Technology</div>
+  <h2>Built on <span class="gradient-text">production-grade</span> foundations</h2>
+  <p style="max-width:600px; margin-bottom:2rem;">Every technology choice was made to minimise ops overhead and cost while maintaining quality.</p>
+
+  <div class="grid-4 fade-in">
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(16,185,129,0.1);">🤖</div>
+      <div>
+        <div class="tech-name">LangGraph</div>
+        <div class="tech-desc">Stateful agent orchestration</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(245,158,11,0.1);">✦</div>
+      <div>
+        <div class="tech-name">Claude API</div>
+        <div class="tech-desc">Sonnet 4.6 + Haiku 4.5</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(6,182,212,0.1);">🐘</div>
+      <div>
+        <div class="tech-name">PostgreSQL + pgvector</div>
+        <div class="tech-desc">One store: structured + vector</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(99,102,241,0.1);">⚡</div>
+      <div>
+        <div class="tech-name">FastAPI</div>
+        <div class="tech-desc">Async API + SSE streaming</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(244,63,94,0.1);">🌿</div>
+      <div>
+        <div class="tech-name">Celery + Redis</div>
+        <div class="tech-desc">Background sync jobs</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(245,158,11,0.1);">🔢</div>
+      <div>
+        <div class="tech-name">sentence-transformers</div>
+        <div class="tech-desc">Local embeddings, no API cost</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(16,185,129,0.1);">🐙</div>
+      <div>
+        <div class="tech-name">gitpython</div>
+        <div class="tech-desc">Local repo extraction</div>
+      </div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon" style="background:rgba(99,102,241,0.1);">🐋</div>
+      <div>
+        <div class="tech-name">Docker Compose</div>
+        <div class="tech-desc">5-service stack, one command</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout fade-in" style="margin-top:1.5rem;">
+    <strong>Key cost decisions:</strong> Embeddings run locally with <code style="font-family:'JetBrains Mono',monospace;font-size:0.85em;color:var(--cyan2);">all-mpnet-base-v2</code> (768d, ~420MB, zero API cost). Classification and code summarisation use Claude Haiku at ~80% lower cost than Sonnet. Postgres handles both structured queries and vector similarity — no separate vector database needed.
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- FOOTER -->
+<footer>
+  <div style="font-size:1.2rem; font-weight:800; margin-bottom:0.5rem;" class="gradient-text">One Context</div>
+  <div style="color:var(--text3);">AI Delivery Co-Pilot · Built with Claude · Thoughtworks</div>
+  <div style="margin-top:1rem; font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--border2);">
+    1,039 sources · 1,653 chunks · 14 repos · 24/47 issues done
+  </div>
+</footer>
+
+<script>
+  // Intersection observer for fade-in animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // Animate progress bars on scroll
+  const barObserver = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const fill = e.target.querySelector('.progress-fill');
+        if (fill) {
+          const w = fill.style.width;
+          fill.style.width = '0%';
+          setTimeout(() => { fill.style.width = w; }, 100);
+        }
+        barObserver.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.3 });
+
+  document.querySelectorAll('.phase-card').forEach(el => barObserver.observe(el));
+</script>
+</body>
+</html>

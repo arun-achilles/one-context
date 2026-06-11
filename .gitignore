@@ -1,4 +1,22 @@
 
+# Secrets
+.env
+jira_fields.txt
+
+# Build artefacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+node_modules/
+.next/
+
+# Project config (contains local paths and team-specific settings)
+onecontext.yaml
+
+# Pipeline output (contains team data, not for source control)
+hygiene_results.json
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

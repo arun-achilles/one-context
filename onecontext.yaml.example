@@ -1,0 +1,91 @@
+# One Context — Project Configuration
+#
+# Copy this file to onecontext.yaml and fill in your values.
+# onecontext.yaml is gitignored — it contains local paths and team-specific settings.
+#
+# Credentials go in .env (never here):
+#   JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN
+#   CONFLUENCE_URL, CONFLUENCE_USERNAME, CONFLUENCE_API_TOKEN
+#   ANTHROPIC_API_KEY
+#   JIRA_PROJECT_KEY, CONFLUENCE_SPACE_KEY
+
+# ── Project identity ──────────────────────────────────────────────────────────
+project: my-project       # used as a namespace prefix in source IDs
+
+# ── Data sources ──────────────────────────────────────────────────────────────
+sources:
+
+  jira:
+    # Board IDs represent the team's curated view of work.
+    # Find yours: python -m hygiene.pipeline --list-boards
+    boards: [1234]
+
+    # Jira field IDs are instance-specific. Find yours:
+    #   curl -u your@email.com:TOKEN https://yourorg.atlassian.net/rest/api/3/field \
+    #     | python3 -m json.tool | grep -A3 -i "epic\|acceptance"
+    custom_fields:
+      epic_link: customfield_10014
+      acceptance_criteria: customfield_10016
+
+  confluence:
+    # Space keys are case-sensitive (visible in the URL: /wiki/spaces/MYSPACE/)
+    spaces: [MYSPACE]
+    exclude_labels: [draft, archived]   # optional
+
+  code:
+    repos:
+      # Local clone (fast, recommended — no API calls, works offline)
+      - path: /absolute/path/to/your/local/repo
+
+      # Remote URL (auto-cloned to ~/.one-context/repos/ on first run)
+      # - url: https://github.com/org/repo
+
+      # Both: use local path if it exists, fall back to URL
+      # - path: /path/to/local/repo
+      #   url: https://github.com/org/repo
+
+    summarize_at: module    # service | module | file
+                            #   service: one summary for the whole repo
+                            #   module:  one summary per top-level directory (default)
+                            #   file:    one summary per source file
+
+    include:
+      - "**/*.py"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.java"
+      - "**/*.cs"
+      - "**/*.go"
+      - "**/openapi.yaml"
+      - "**/openapi.yml"
+
+    exclude:
+      - "**/tests/**"
+      - "**/test/**"
+      - "**/spec/**"
+      - "**/migrations/**"
+      - "**/node_modules/**"
+      - "**/dist/**"
+      - "**/build/**"
+      - "**/coverage/**"
+      - "**/.next/**"
+      - "**/bin/**"
+      - "**/obj/**"
+      - "**/*.lock"
+      - "**/*.min.js"
+      - "**/*.generated.*"
+
+    git_history_months: 12    # 0 to skip git history extraction
+
+# ── Hygiene settings ──────────────────────────────────────────────────────────
+hygiene:
+  staleness_months: 12      # content older than this is flagged for review
+  min_quality_auto: 4       # quality score ≥ this → auto-included (no review needed)
+  min_quality_review: 2     # quality score ≥ this → pending review; below → rejected
+
+# ── Sync settings ─────────────────────────────────────────────────────────────
+sync:
+  schedule: "0 2 * * *"    # cron: daily at 02:00 UTC
+  webhook_port: 8001        # port for Jira / GitHub webhook events

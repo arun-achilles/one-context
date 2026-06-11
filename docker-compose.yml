@@ -1,0 +1,87 @@
+services:
+
+  # ── Data layer ────────────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: one_context
+      POSTGRES_USER: one_context
+      POSTGRES_PASSWORD: one_context
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U one_context"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Application layer ─────────────────────────────────────────────────────
+  api:
+    build: .
+    command: uvicorn agent.api:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./onecontext.yaml:/app/onecontext.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: celery -A agent.tasks worker --loglevel=info --concurrency=2
+    env_file: .env
+    volumes:
+      - ./onecontext.yaml:/app/onecontext.yaml:ro
+      # Mount local repo paths read-only so the code extractor can access them.
+      # Add an entry here for each repo listed under 'code.repos[].path'
+      # in onecontext.yaml — paths must match exactly.
+      # Example:
+      # - /Users/me/projects/checkout-service:/Users/me/projects/checkout-service:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build: .
+    command: celery -A agent.tasks beat --loglevel=info --schedule=/tmp/celerybeat-schedule
+    env_file: .env
+    volumes:
+      - ./onecontext.yaml:/app/onecontext.yaml:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # ── Frontend (Phase 1.5 — uncomment when Next.js scaffold is ready) ───────
+  # web:
+  #   build: ./web
+  #   command: npm run start
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - NEXT_PUBLIC_API_URL=http://api:8000
+  #   depends_on:
+  #     - api
+  #   restart: unless-stopped
+
+volumes:
+  pgdata:
