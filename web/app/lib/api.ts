@@ -24,6 +24,15 @@ export interface Session {
   created_at: string;
 }
 
+export interface FeatureLink {
+  id: number;
+  link_type: "jira_story" | "jira_task" | "jira_epic" | "confluence_page" | "github_pr" | "memory";
+  link_id: string;
+  link_url: string | null;
+  title: string | null;
+  created_at: string;
+}
+
 export interface Message {
   id: number;
   role: "user" | "assistant";
@@ -57,9 +66,15 @@ export async function createFeature(name: string, description: string, created_b
   return res.json();
 }
 
-export async function getFeature(id: string): Promise<Feature & { sessions: Session[]; context: string }> {
+export async function getFeature(id: string): Promise<Feature & { sessions: Session[]; context: string; links: FeatureLink[] }> {
   const res = await fetch(`${BASE}/features/${id}`);
   if (!res.ok) throw new Error("Feature not found");
+  return res.json();
+}
+
+export async function getLinks(featureId: string): Promise<FeatureLink[]> {
+  const res = await fetch(`${BASE}/features/${featureId}/links`);
+  if (!res.ok) throw new Error("Failed to load links");
   return res.json();
 }
 

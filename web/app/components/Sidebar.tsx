@@ -13,9 +13,10 @@ interface Props {
   activeConvId: number | null;
   onSelectFeature: (f: Feature) => void;
   onGeneralChat: () => void;
+  author: string;
 }
 
-export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat }: Props) {
+export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, author }: Props) {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", created_by: "" });
@@ -113,6 +114,9 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat }
                 <span className="text-[10px] font-mono" style={{ color: "#6366f1" }}>{f.id}</span>
                 {f.session_count != null && f.session_count > 0 && (
                   <span className="text-[10px]" style={{ color: "#475569" }}>{f.session_count} session{f.session_count !== 1 ? "s" : ""}</span>
+                )}
+                {author.trim() && f.created_by?.toLowerCase() === author.toLowerCase() && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0 inline-block" />
                 )}
               </div>
             </button>

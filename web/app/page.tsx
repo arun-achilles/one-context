@@ -10,10 +10,17 @@ type View =
   | { kind: "feature"; feature: Feature }
   | { kind: "chat"; conversationId: number; featureName?: string; featureId?: string; role?: string };
 
-const DEFAULT_AUTHOR = "You";
-
 export default function Home() {
   const [view, setView] = useState<View>({ kind: "welcome" });
+  const [author, setAuthor] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("oc_author") ?? "";
+  });
+
+  function handleSetAuthor(name: string) {
+    setAuthor(name);
+    if (typeof window !== "undefined") localStorage.setItem("oc_author", name);
+  }
 
   async function handleGeneralChat() {
     const conv = await createConversation("General Chat");
@@ -34,6 +41,7 @@ export default function Home() {
         activeConvId={view.kind === "chat" ? view.conversationId : null}
         onSelectFeature={handleSelectFeature}
         onGeneralChat={handleGeneralChat}
+        author={author}
       />
 
       {/* Main area */}
@@ -46,6 +54,8 @@ export default function Home() {
             onStartSession={(convId, role) =>
               handleStartSession(convId, role, view.feature.name, view.feature.id)
             }
+            author={author}
+            onAuthorChange={handleSetAuthor}
           />
         )}
 
@@ -54,7 +64,7 @@ export default function Home() {
             conversationId={view.conversationId}
             featureName={view.featureName}
             featureId={view.featureId}
-            author={DEFAULT_AUTHOR}
+            author={author || "You"}
           />
         )}
       </main>

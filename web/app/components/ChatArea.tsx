@@ -245,6 +245,20 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               t.style.height = Math.min(t.scrollHeight, 128) + "px";
             }}
           />
+          {featureId && (
+            <button
+              onClick={() => send("remember our key decisions and action items from this conversation so far")}
+              disabled={loading}
+              title="Save memory checkpoint"
+              className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 text-sm"
+              style={{
+                background: "rgba(245,158,11,0.1)",
+                border: "1px solid rgba(245,158,11,0.2)",
+                color: "#f59e0b"
+              }}>
+              💾
+            </button>
+          )}
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || loading}

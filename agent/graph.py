@@ -9,11 +9,11 @@ from agent.nodes.responder import responder_node
 
 def _route_after_route(state: AgentState) -> str:
     """After routing, skip retrieve+reason for confirmations — go straight to act.
-    Skip retrieval for remember — no knowledge lookup needed to save a fact."""
+    Skip retrieval for remember and confluence_update — no knowledge lookup needed."""
     intent = state.get("intent")
     if intent == "confirm_action":
         return "act"
-    if intent == "remember":
+    if intent in ("remember", "confluence_update"):
         return "reason"
     return "retrieve"
 

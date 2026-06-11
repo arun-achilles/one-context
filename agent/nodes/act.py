@@ -22,6 +22,9 @@ def act_node(state: AgentState) -> AgentState:
     if action_type == "remember":
         return _save_memory(state, pending_action)
 
+    if action_type == "confluence_update":
+        return _update_confluence(state, pending_action)
+
     return {**state, "answer": f"Unknown action type: {action_type}"}
 
 
@@ -67,9 +70,55 @@ def _save_memory(state: AgentState, action: dict) -> AgentState:
             context=action.get("context"),
         )
         answer = f"✓ Saved to team memory (id: {result['memory_id']}).\n\n> {action['fact']}"
+        feature_id = state.get("feature_id")
+        if feature_id:
+            try:
+                from agent.tools.feature_tools import link_artefact
+                link_artefact(
+                    feature_id=feature_id,
+                    link_type="memory",
+                    link_id=str(result["memory_id"]),
+                    link_url=None,
+                    title=action["fact"][:80],
+                )
+            except Exception:
+                pass
     except Exception as e:
         answer = f"Failed to save memory: {e}"
 
+    return {**state, "answer": answer, "citations": [], "pending_action": None}
+
+
+def _update_confluence(state: AgentState, action: dict) -> AgentState:
+    from agent.tools.confluence_tools import update_confluence_page
+    try:
+        result = update_confluence_page(
+            page_title=action["page_title"],
+            new_content=action["content"],
+            append=True,
+        )
+        page_id = result.get("page_id", "")
+        url = result.get("url", "")
+        version = result.get("version", "?")
+        answer = (
+            f"✓ Updated Confluence page **{action['page_title']}** (v{version}).\n\n"
+            f"[Open in Confluence]({url})"
+        )
+        feature_id = state.get("feature_id")
+        if feature_id:
+            try:
+                from agent.tools.feature_tools import link_artefact
+                link_artefact(
+                    feature_id=feature_id,
+                    link_type="confluence_page",
+                    link_id=str(page_id),
+                    link_url=url,
+                    title=action["page_title"],
+                )
+            except Exception:
+                pass
+    except Exception as e:
+        answer = f"Failed to update Confluence page: {e}"
     return {**state, "answer": answer, "citations": [], "pending_action": None}
 
 

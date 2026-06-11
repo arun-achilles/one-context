@@ -3,7 +3,17 @@ Synthesizes answers and drafts stories using Claude Sonnet.
 """
 import json
 import anthropic
+import re as _re
 from agent.state import AgentState
+
+SUMMARIZE_CONVERSATION = "SUMMARIZE_CONVERSATION"
+
+_SUMMARY_REQUEST_RE = _re.compile(
+    r"\b(remember|save|summarize|capture|record)\b.{0,30}"
+    r"\b(our discussion|our decisions|our conversation|what we discussed|"
+    r"key decisions|key points|this conversation|our session)\b",
+    _re.IGNORECASE,
+)
 
 client = anthropic.Anthropic()
 
@@ -61,7 +71,22 @@ REMEMBER_SYSTEM = """You are One Context. The user wants to save something to te
 
 Extract the key fact, decision, or agreement from their message.
 - If a specific fact is present, reply with JUST the fact (1-3 sentences, no preamble).
+- If the message asks to summarize or remember the whole conversation/discussion/decisions, reply with exactly: SUMMARIZE_CONVERSATION
 - If the message is vague (e.g. "remember these decisions" with nothing specific), reply with exactly: ASK_FOR_CONTENT"""
+
+CONV_SUMMARY_SYSTEM = """You are One Context. Extract 3-5 key decisions, agreements, or action items from this conversation as concise bullet points. Each bullet should be a complete, self-contained statement."""
+
+CONFLUENCE_UPDATE_SYSTEM = """You are One Context. The user wants to update a Confluence page.
+
+Extract from their message:
+- PAGE: the exact page title they mentioned
+- CONTENT: the content to append
+
+Reply in this EXACT format (two lines only):
+PAGE: <exact page title>
+CONTENT: <content to append>
+
+If you cannot determine both clearly, ask one short clarifying question."""
 
 
 def reasoner_node(state: AgentState) -> AgentState:
@@ -76,6 +101,9 @@ def reasoner_node(state: AgentState) -> AgentState:
 
     if intent == "remember":
         return _prepare_memory(state, query)
+
+    if intent == "confluence_update":
+        return _prepare_confluence_update(state, query)
 
     # qa, pipeline_query, confirm_action (shouldn't reach here), default
     return _answer_qa(state, query)
@@ -149,14 +177,43 @@ def _draft_story(state: AgentState, query: str) -> AgentState:
     }
 
 
-def _prepare_memory(state: AgentState, query: str) -> AgentState:
+def _summarize_conversation(state: AgentState) -> str:
+    from langchain_core.messages import HumanMessage
+    raw_messages = state.get("messages", [])
+    recent = [
+        m for m in raw_messages
+        if not (hasattr(m, "content") and m.content.startswith("[FEATURE CONTEXT]"))
+    ][-10:]
+    transcript_lines = []
+    for m in recent:
+        role = "User" if isinstance(m, HumanMessage) else "Assistant"
+        content = m.content
+        # strip pending action markers
+        content = _re.sub(r"<!-- PENDING_ACTION:.*?-->", "", content, flags=_re.DOTALL).strip()
+        if content:
+            transcript_lines.append(f"{role}: {content[:400]}")
+    transcript = "\n\n".join(transcript_lines) or "No conversation yet."
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=300,
-        system=REMEMBER_SYSTEM,
-        messages=[{"role": "user", "content": query}],
+        max_tokens=400,
+        system=CONV_SUMMARY_SYSTEM,
+        messages=[{"role": "user", "content": f"Conversation:\n\n{transcript}"}],
     )
-    fact = response.content[0].text.strip()
+    return response.content[0].text.strip()
+
+
+def _prepare_memory(state: AgentState, query: str) -> AgentState:
+    # Fast-path: detect conversation-summary requests before LLM call
+    if _SUMMARY_REQUEST_RE.search(query):
+        fact = SUMMARIZE_CONVERSATION
+    else:
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            system=REMEMBER_SYSTEM,
+            messages=[{"role": "user", "content": query}],
+        )
+        fact = response.content[0].text.strip()
 
     if fact == "ASK_FOR_CONTENT":
         return {
@@ -164,6 +221,9 @@ def _prepare_memory(state: AgentState, query: str) -> AgentState:
             "answer": "What would you like me to remember? Share the decision or fact and I'll save it to team memory.",
             "citations": [],
         }
+
+    if fact == SUMMARIZE_CONVERSATION:
+        fact = _summarize_conversation(state)
 
     pending_action = {
         "type": "remember",
@@ -175,6 +235,37 @@ def _prepare_memory(state: AgentState, query: str) -> AgentState:
         f"Reply **yes** to confirm."
         f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
     )
+    return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}
+
+
+def _prepare_confluence_update(state: AgentState, query: str) -> AgentState:
+    system = _build_system(CONFLUENCE_UPDATE_SYSTEM, state)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        system=system,
+        messages=[{"role": "user", "content": query}],
+    )
+    raw = response.content[0].text.strip()
+
+    page_title, content = "", ""
+    for line in raw.splitlines():
+        if line.startswith("PAGE:"):
+            page_title = line[5:].strip()
+        elif line.startswith("CONTENT:"):
+            content = line[8:].strip()
+
+    if not page_title or not content:
+        return {**state, "answer": raw, "citations": []}
+
+    pending_action = {"type": "confluence_update", "page_title": page_title, "content": content}
+    answer_body = (
+        f"I'll update this Confluence page for you:\n\n"
+        f"- **Page:** {page_title}\n"
+        f"- **Content to append:**\n\n{content}\n\n"
+        f"---\nReply **yes** to update, or tell me what to change."
+    )
+    answer_with_marker = answer_body + f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
     return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}
 
 

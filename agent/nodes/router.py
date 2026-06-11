@@ -2,12 +2,13 @@
 Classifies user intent and detects confirmation of pending write actions.
 
 Intents:
-  qa             — question about team knowledge, code, architecture
-  pipeline_query — sprint status, blockers, what's in progress
-  story_draft    — user wants to create a Jira story
-  remember       — user wants to persist a decision/fact to team memory
-  confirm_action — user is confirming a pending write (yes/create/go ahead)
-  clarify        — query too vague to act on
+  qa                — question about team knowledge, code, architecture
+  pipeline_query    — sprint status, blockers, what's in progress
+  story_draft       — user wants to create a Jira story
+  remember          — user wants to persist a decision/fact to team memory
+  confluence_update — user wants to update or append content to a Confluence page
+  confirm_action    — user is confirming a pending write (yes/create/go ahead)
+  clarify           — query too vague to act on
 """
 import json
 import re
@@ -21,6 +22,7 @@ SYSTEM = """Classify the user's message into exactly one intent:
 - pipeline_query: question about sprint status, blockers, in-progress work, or delivery
 - story_draft: user wants to draft or create a Jira story/ticket
 - remember: user explicitly wants to save a decision, fact, or agreement to team memory
+- confluence_update: user wants to update or append content to a Confluence page
 - confirm_action: user is confirming or approving a previously shown draft (e.g. "yes", "create it", "looks good", "go ahead")
 - clarify: message is too vague or ambiguous to act on
 
@@ -59,7 +61,7 @@ def router_node(state: AgentState) -> AgentState:
     except (json.JSONDecodeError, IndexError):
         intent = "qa"
 
-    valid = {"qa", "pipeline_query", "story_draft", "remember", "confirm_action", "clarify"}
+    valid = {"qa", "pipeline_query", "story_draft", "remember", "confluence_update", "confirm_action", "clarify"}
     if intent not in valid:
         intent = "qa"
 
