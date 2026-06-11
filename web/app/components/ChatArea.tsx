@@ -15,12 +15,18 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   sources: string[];
+  richSources?: Array<{ url: string; label: string; content_type: string; score: number }>;
   streaming?: boolean;
 }
 
+type RichSource = { url: string; label: string; content_type: string; score: number };
+
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
-  const cleanContent = msg.content.replace(/<!--[\s\S]*?-->/g, "").trim();
+  const cleanContent = msg.content
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/\s*\[S\d+\]/g, "")
+    .trim();
 
   // Compact checkpoint badge — no bubble
   if (!isUser && cleanContent.startsWith("[CHECKPOINT]")) {
@@ -56,8 +62,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
             : "rounded-tl-sm"
         }`}
           style={isUser
-            ? { background: "#312e81", border: "1px solid #4338ca" }
-            : { background: "var(--card)", border: "1px solid var(--border)", color: "#cbd5e1" }}>
+            ? { background: "linear-gradient(150deg,#312e81,#2563eb)", border: "1px solid rgba(99,102,241,0.5)" }
+            : { background: "linear-gradient(160deg, rgba(22,33,59,0.88), rgba(14,22,45,0.92))", border: "1px solid rgba(62,83,137,0.75)", color: "#d8def3" }}>
           {msg.streaming && !cleanContent ? (
             <span className="typing-cursor text-slate-400 text-xs">Thinking</span>
           ) : (
@@ -74,15 +80,21 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         {/* Sources */}
         {msg.sources.length > 0 && (
           <div className="flex flex-wrap gap-1.5 px-1">
-            {msg.sources.filter(Boolean).slice(0, 4).map((url, i) => (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                className="text-[10px] px-2 py-0.5 rounded-full transition-all"
-                style={{ background: "rgba(6,182,212,0.08)", color: "#22d3ee", border: "1px solid rgba(6,182,212,0.2)" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "rgba(6,182,212,0.15)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "rgba(6,182,212,0.08)")}>
-                ↗ {urlLabel(url)}
-              </a>
-            ))}
+            {(msg.richSources ?? msg.sources.filter(Boolean).slice(0, 4).map(u => ({ url: u, label: "", content_type: "knowledge", score: 0 }))).slice(0, 5).map((src, i) => {
+              const normalizedType = inferSourceType(src);
+              const typeIcon = SOURCE_TYPE_ICONS[normalizedType] ?? "🔗";
+              const label = urlLabel(src.url);
+              return (
+                <a key={i} href={src.url} target="_blank" rel="noopener noreferrer"
+                  className="text-[10px] px-2 py-0.5 rounded-full transition-all flex items-center gap-1"
+                  style={{ background: "rgba(99,102,241,0.08)", color: "#93c5fd", border: "1px solid rgba(99,102,241,0.26)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(99,102,241,0.15)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(99,102,241,0.08)")}>
+                  <span>{typeIcon}</span>
+                  <span>{label}</span>
+                </a>
+              );
+            })}
           </div>
         )}
       </div>
@@ -111,6 +123,33 @@ function urlLabel(url: string): string {
     return url.slice(0, 24);
   }
 }
+
+function inferSourceType(src: RichSource): string {
+  const ctype = (src.content_type || "").toLowerCase();
+  if (ctype && ctype !== "knowledge" && ctype !== "unknown") return ctype;
+
+  const url = (src.url || "").toLowerCase();
+  const label = (src.label || "").toLowerCase();
+
+  if (url.includes("/browse/")) return "jira_issue";
+  if (url.includes("/wiki/")) return "confluence_page";
+  if (url.includes("github.com") || url.includes("/pull/")) return "feature_link";
+  if (label.includes("session summary")) return "feature_session_summary";
+  if (label.includes("team memory")) return "team_memory";
+  return "knowledge";
+}
+
+const SOURCE_TYPE_ICONS: Record<string, string> = {
+  feature_session_summary: "🗂️",
+  feature_link:            "🔗",
+  team_memory:             "🧠",
+  jira_issue:              "📋",
+  confluence_page:         "📄",
+  business_flow:           "⚙️",
+  shipped_feature:         "🚀",
+  api_capability:          "🔌",
+  knowledge:               "📚",
+};
 
 const SUGGESTIONS = [
   "What does this project do?",
@@ -169,7 +208,11 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
           ));
         } else if (event.type === "sources") {
           setMessages(prev => prev.map(m =>
-            m.id === assistantMsg.id ? { ...m, sources: event.sources ?? [] } : m
+            m.id === assistantMsg.id ? {
+              ...m,
+              sources: event.sources ?? [],
+              richSources: event.rich_sources ?? undefined,
+            } : m
           ));
         } else if (event.type === "done" || event.type === "error") {
           setMessages(prev => prev.map(m =>
@@ -228,9 +271,9 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               {SUGGESTIONS.map(s => (
                 <button key={s} onClick={() => send(s)}
                   className="text-xs text-left px-3.5 py-2.5 rounded-xl transition-all"
-                  style={{ background: "var(--card)", border: "1px solid var(--border)", color: "#94a3b8" }}
+                  style={{ background: "rgba(20,31,56,0.88)", border: "1px solid rgba(62,83,137,0.75)", color: "#94a3b8" }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#a5b4fc"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(62,83,137,0.75)"; e.currentTarget.style.color = "#94a3b8"; }}>
                   {s}
                 </button>
               ))}
@@ -245,7 +288,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {/* Input */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2">
         <div className="flex items-end gap-2 p-2 rounded-2xl transition-all"
-          style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          style={{ background: "linear-gradient(170deg, rgba(22,33,59,0.92), rgba(13,21,43,0.96))", border: "1px solid rgba(64,86,141,0.78)", boxShadow: "0 14px 36px rgba(1,9,24,0.32)" }}>
           <textarea
             ref={inputRef}
             value={input}

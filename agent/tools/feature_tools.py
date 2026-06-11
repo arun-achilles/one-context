@@ -4,6 +4,8 @@ Feature workspace tools — create, retrieve, and link artefacts to Features.
 A Feature is a named, persistent workspace shared across PO, Tech Lead, and Dev.
 It exists before a Jira epic and accumulates all linked artefacts as work progresses.
 """
+import re
+
 from db.connection import cursor
 
 
@@ -145,6 +147,116 @@ def get_links(feature_id: str) -> list[dict]:
             (feature_id,),
         )
         return [dict(r) for r in cur.fetchall()]
+
+
+def get_feature_retrieval_chunks(
+    feature_id: str,
+    query: str,
+    *,
+    session_limit: int = 5,
+    link_limit: int = 12,
+) -> list[dict]:
+    """
+    Build high-priority retrieval chunks from feature-local context.
+
+    These chunks are intended to be searched before global vector knowledge
+    so active feature conversations stay grounded in linked artefacts and
+    prior session decisions.
+    """
+    q_tokens = _tokenize(query)
+    chunks: list[dict] = []
+
+    # 1) Prior feature session summaries
+    with cursor() as cur:
+        cur.execute(
+            """SELECT role, author, summary, created_at
+               FROM feature_sessions
+               WHERE feature_id = %s AND summary IS NOT NULL AND summary <> ''
+               ORDER BY created_at DESC
+               LIMIT %s""",
+            (feature_id, session_limit),
+        )
+        summaries = cur.fetchall()
+
+    for row in summaries:
+        role = row.get("role") or "unknown"
+        author = row.get("author") or "unknown"
+        summary = row.get("summary") or ""
+        created = str(row.get("created_at") or "")[:10]
+        match_boost = _match_boost(q_tokens, summary)
+        score = min(0.98, 0.86 + match_boost)
+        chunks.append(
+            {
+                "content": f"[Feature session summary] {created} ({role}, {author})\n{summary}",
+                "url": "",
+                "content_type": "feature_session_summary",
+                "tags": ["feature", "session", role],
+                "score": round(score, 3),
+                "high_confidence": True,
+            }
+        )
+
+    # 2) Linked artefacts for this feature
+    with cursor() as cur:
+        cur.execute(
+            """SELECT link_type, link_id, link_url, title, created_at
+               FROM feature_links
+               WHERE feature_id = %s
+               ORDER BY created_at DESC
+               LIMIT %s""",
+            (feature_id, link_limit),
+        )
+        links = cur.fetchall()
+
+    for row in links:
+        link_type = row.get("link_type") or "artefact"
+        link_id = row.get("link_id") or ""
+        link_url = row.get("link_url") or ""
+        title = row.get("title") or link_id
+        created = str(row.get("created_at") or "")[:10]
+
+        relevance_text = f"{title} {link_id} {link_type}"
+        match_boost = _match_boost(q_tokens, relevance_text)
+        if link_id and link_id.lower() in query.lower():
+            match_boost = max(match_boost, 0.12)
+
+        score = min(0.97, 0.82 + match_boost)
+        chunks.append(
+            {
+                "content": (
+                    f"[Feature linked artefact] {created}\n"
+                    f"Type: {link_type}\n"
+                    f"Ref: {link_id}\n"
+                    f"Title: {title}"
+                ),
+                "url": link_url,
+                "content_type": "feature_link",
+                "tags": ["feature", "linked_artefact", link_type],
+                "score": round(score, 3),
+                "high_confidence": True,
+            }
+        )
+
+    # Keep strongest feature-local chunks first.
+    chunks.sort(key=lambda c: c.get("score", 0), reverse=True)
+    return chunks
+
+
+def _tokenize(text: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9_\-]+", (text or "").lower()))
+
+
+def _match_boost(query_tokens: set[str], text: str) -> float:
+    if not query_tokens:
+        return 0.0
+    text_tokens = _tokenize(text)
+    if not text_tokens:
+        return 0.0
+    overlap = len(query_tokens.intersection(text_tokens))
+    if overlap == 0:
+        return 0.0
+    # Cap boost so feature chunks stay strong but don't fully dominate certainty.
+    return min(0.15, 0.03 * overlap)
 
 
 # ---------------------------------------------------------------------------

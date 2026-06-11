@@ -27,6 +27,7 @@ Other:
     GET  /health
 """
 import json
+import re
 from datetime import datetime, timezone
 from typing import AsyncIterator
 
@@ -48,6 +49,27 @@ from agent.tools.feature_tools import (
 from db.connection import cursor
 
 app = FastAPI(title="One Context API", version="0.1.0")
+
+
+def _infer_source_type(content_type: str | None, url: str, label: str | None = None) -> str:
+    """Normalize source type for UI badges, with URL/label fallback inference."""
+    ctype = (content_type or "").strip().lower()
+    if ctype and ctype not in ("knowledge", "unknown"):
+        return ctype
+
+    u = (url or "").lower()
+    l = (label or "").lower()
+    if "/browse/" in u or re.search(r"/[a-z][a-z0-9]+-\d+", u):
+        return "jira_issue"
+    if "/wiki/" in u:
+        return "confluence_page"
+    if "/pull/" in u or "github.com" in u:
+        return "feature_link"
+    if "session summary" in l:
+        return "feature_session_summary"
+    if "team memory" in l:
+        return "team_memory"
+    return "knowledge"
 
 app.add_middleware(
     CORSMiddleware,
@@ -191,6 +213,11 @@ def start_session(feature_id: str, body: NewSession):
     if not feature:
         raise HTTPException(status_code=404, detail="Feature not found")
 
+    # Auto-summarize the most recent session that hasn't been summarized yet.
+    # This ensures when a new session opens, prior session decisions are captured
+    # and will be injected via feature context into future sessions.
+    _auto_summarize_previous_session(feature_id)
+
     # Create conversation with feature name as topic
     with cursor() as cur:
         cur.execute(
@@ -223,11 +250,53 @@ def start_session(feature_id: str, body: NewSession):
     )
 
 
+def _auto_summarize_previous_session(feature_id: str) -> None:
+    """Find the most recent session with no summary and generate one for it."""
+    sessions = get_sessions(feature_id)
+    unsummarized = [s for s in sessions if not s.get("summary")]
+    if not unsummarized:
+        return
+    # Summarize the most recent unsummarized session
+    target = unsummarized[-1]
+    conv_id = target["conversation_id"]
+    session_id = target["id"]
+    try:
+        from agent.nodes.reasoner import generate_session_summary
+        summary = generate_session_summary(conv_id)
+        if summary:
+            update_session_summary(session_id, summary)
+    except Exception:
+        pass  # never block session creation on summary failure
+
+
 @app.get("/features/{feature_id}/sessions", response_model=list[SessionOut])
 def list_sessions(feature_id: str):
     if not get_feature(feature_id):
         raise HTTPException(status_code=404, detail="Feature not found")
     return [SessionOut(**s) for s in get_sessions(feature_id)]
+
+
+@app.post("/features/{feature_id}/sessions/{session_id}/summarize", status_code=200)
+def summarize_session(feature_id: str, session_id: int):
+    """
+    Explicitly generate and save a summary for a session.
+    Useful when a user ends a session from the UI and wants it captured immediately.
+    """
+    with cursor() as cur:
+        cur.execute(
+            "SELECT conversation_id FROM feature_sessions WHERE id = %s AND feature_id = %s",
+            (session_id, feature_id),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        conv_id = row["conversation_id"]
+
+    from agent.nodes.reasoner import generate_session_summary
+    summary = generate_session_summary(conv_id)
+    if summary:
+        update_session_summary(session_id, summary)
+    return {"session_id": session_id, "summary": summary or ""}
 
 
 @app.patch("/features/{feature_id}/sessions/{session_id}", status_code=204)
@@ -330,6 +399,46 @@ async def chat(conversation_id: int, body: ChatRequest):
     )
 
 
+def _compress_history(rows: list) -> str:
+    """
+    Produce a compact summary of older conversation turns using Claude Haiku.
+    Called only when there are more than RECENT_TURNS * 2 messages in a conversation.
+    Returns empty string on failure so it never blocks the main flow.
+    """
+    import re as _re
+    import anthropic as _anthropic
+
+    _client = _anthropic.Anthropic()
+    COMPRESS_SYSTEM = (
+        "You are a conversation summarizer. Given a chat transcript, produce a concise summary "
+        "(3-6 bullet points) covering: decisions made, questions asked, answers given, and any "
+        "pending actions. Be specific. Use past tense. Do not invent anything not in the transcript."
+    )
+    lines = []
+    for row in rows:
+        content = row["content"] or ""
+        content = _re.sub(r"<!-- PENDING_ACTION:.*?-->", "", content, flags=_re.DOTALL).strip()
+        if not content or content.startswith("[FEATURE CONTEXT"):
+            continue
+        label = "User" if row["role"] == "user" else "Assistant"
+        lines.append(f"{label}: {content[:400]}")
+
+    if not lines:
+        return ""
+
+    transcript = "\n\n".join(lines[-20:])
+    try:
+        resp = _client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=350,
+            system=COMPRESS_SYSTEM,
+            messages=[{"role": "user", "content": f"Transcript:\n\n{transcript}"}],
+        )
+        return resp.content[0].text.strip()
+    except Exception:
+        return ""
+
+
 async def _stream_chat(
     conversation_id: int,
     user_message: str,
@@ -354,10 +463,42 @@ async def _stream_chat(
         # 2. Check if this conversation belongs to a Feature session (for state)
         feature_id = get_feature_for_conversation(conversation_id)
 
-        # 3. Build LangChain message history from DB
-        # Feature context is already in DB as initial messages (saved on session start)
-        history = []
+        # 3. Build LangChain message history from DB with compression.
+        # Keep feature bootstrap messages + last RECENT_TURNS full turns verbatim.
+        # Older turns are compressed into a single summary prefix to avoid
+        # token bloat and context dilution on long conversations.
+        RECENT_TURNS = 6  # each turn = 1 user + 1 assistant message pair
+
+        bootstrap_rows = []
+        real_rows = []
         for row in history_rows:
+            content = row["content"] or ""
+            if content.startswith("[FEATURE CONTEXT") or content.startswith("[FEATURE CONTEXT ACK]"):
+                bootstrap_rows.append(row)
+            else:
+                real_rows.append(row)
+
+        # Split real rows into older (to compress) and recent (keep verbatim)
+        cutoff = max(0, len(real_rows) - RECENT_TURNS * 2)
+        old_rows = real_rows[:cutoff]
+        recent_rows = real_rows[cutoff:]
+
+        history = []
+
+        # Feature context is injected via the system prompt in _build_system() inside the
+        # reasoner. Do NOT also add bootstrap messages as conversation turns — that is the
+        # duplication bug that causes token bloat and confusing repeated context.
+        # (bootstrap_rows stay in DB for UI filtering but are excluded from agent input)
+
+        # Compress older turns into a summary prefix injected as a system-style hint
+        if old_rows:
+            compressed = _compress_history(old_rows)
+            if compressed:
+                history.append(HumanMessage(content=f"[EARLIER CONVERSATION SUMMARY]\n{compressed}"))
+                history.append(AIMessage(content="Understood. I have context from earlier in this conversation."))
+
+        # Append recent turns verbatim
+        for row in recent_rows:
             if row["role"] == "user":
                 history.append(HumanMessage(content=row["content"]))
             else:
@@ -394,9 +535,22 @@ async def _stream_chat(
             chunk = word if i == 0 else " " + word
             yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
 
-        # 6. Send sources
-        if cited_urls:
-            yield f"data: {json.dumps({'type': 'sources', 'sources': cited_urls})}\n\n"
+        # 6. Send enriched source objects so UI can show type badges + labels
+        if citations:
+            rich_sources = [
+                {
+                    "url": c.get("url", ""),
+                    "label": c.get("label", ""),
+                    "content_type": _infer_source_type(
+                        c.get("content_type"),
+                        c.get("url", ""),
+                        c.get("label", ""),
+                    ),
+                    "score": c.get("score", 0),
+                }
+                for c in citations if c.get("url")
+            ]
+            yield f"data: {json.dumps({'type': 'sources', 'sources': cited_urls, 'rich_sources': rich_sources})}\n\n"
 
         # 7. Persist the assistant message
         with cursor() as cur:

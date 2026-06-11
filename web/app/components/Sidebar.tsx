@@ -44,11 +44,11 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
   return (
     <>
       <aside className="w-72 flex-shrink-0 flex flex-col h-full border-r"
-        style={{ background: "var(--bg2)", borderColor: "var(--border)" }}>
+        style={{ background: "linear-gradient(180deg, rgba(10,19,38,0.96) 0%, rgba(9,16,32,0.96) 100%)", borderColor: "rgba(54,74,124,0.72)" }}>
 
         {/* Brand */}
         <div className="px-4 py-4 border-b flex items-center gap-2.5"
-          style={{ borderColor: "var(--border)" }}>
+          style={{ borderColor: "rgba(54,74,124,0.72)" }}>
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold"
             style={{ background: "linear-gradient(135deg,#6366f1,#06b6d4)" }}>
             ⬡
@@ -63,9 +63,15 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
         <div className="px-3 pt-3">
           <button onClick={onGeneralChat}
             className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all text-left"
-            style={{ color: "#94a3b8" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "var(--card2)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}>
+            style={{ color: "#94a3b8", border: "1px solid transparent" }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(30, 43, 73, 0.75)";
+              e.currentTarget.style.borderColor = "rgba(78, 106, 176, 0.55)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "transparent";
+            }}>
             <span className="text-base">💬</span>
             <span>General Chat</span>
           </button>
@@ -97,8 +103,8 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
               className="w-full text-left px-3 py-2.5 rounded-lg transition-all group"
               style={{ border: "1px solid transparent" }}
               onMouseEnter={e => {
-                e.currentTarget.style.background = "var(--card)";
-                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.background = "rgba(22, 33, 59, 0.9)";
+                e.currentTarget.style.borderColor = "rgba(70, 94, 157, 0.78)";
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.background = "transparent";
@@ -127,10 +133,10 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
       {/* New Feature Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(6,13,26,0.85)" }}
+          style={{ background: "rgba(6,13,26,0.85)", backdropFilter: "blur(4px)" }}
           onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-            style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            style={{ background: "linear-gradient(155deg, rgba(25,36,66,0.96), rgba(13,21,43,0.98))", border: "1px solid rgba(66,89,146,0.76)" }}>
             <h2 className="text-lg font-bold text-white mb-1">New Feature</h2>
             <p className="text-sm mb-5" style={{ color: "#64748b" }}>
               Multi-sprint, multi-role delivery workspace. A Jira epic will be created when you're ready.

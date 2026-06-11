@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { getFeature, startSession, deleteSession, Feature, FeatureLink, Session } from "@/app/lib/api";
+import { getFeature, startSession, deleteSession, summarizeSession, Feature, FeatureLink, Session } from "@/app/lib/api";
 
 interface Props {
   feature: Feature;
@@ -13,7 +13,8 @@ const ROLES = [
   { key: "po",         label: "Product Owner",   icon: "📋", color: "#6366f1" },
   { key: "tech_lead",  label: "Tech Lead",        icon: "🏗️",  color: "#06b6d4" },
   { key: "dev",        label: "Developer",        icon: "💻", color: "#10b981" },
-  { key: "em",         label: "Eng. Manager",     icon: "📊", color: "#f59e0b" },
+  { key: "ba",         label: "Business Analyst", icon: "🧾", color: "#f59e0b" },
+  { key: "qa",         label: "QA",               icon: "🧪", color: "#ec4899" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,6 +29,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
   const [links, setLinks] = useState<FeatureLink[]>([]);
   const [starting, setStarting] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [summarizing, setSummarizing] = useState<number | null>(null);
 
   function refreshDetail() {
     getFeature(feature.id).then(d => {
@@ -67,6 +69,18 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
     }
   }
 
+  async function handleSummarizeSession(s: Session) {
+    setSummarizing(s.id);
+    try {
+      await summarizeSession(feature.id, s.id);
+      refreshDetail();
+    } catch {
+      alert("Failed to summarize session");
+    } finally {
+      setSummarizing(null);
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-y-auto px-8 py-8 max-w-2xl mx-auto w-full">
       {/* Header */}
@@ -100,9 +114,9 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
         <input value={author} onChange={e => onAuthorChange(e.target.value)}
           placeholder="Enter your name to start a session"
           className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none transition-all"
-          style={{ background: "var(--card)", border: "1px solid var(--border)", caretColor: "#6366f1" }}
+          style={{ background: "rgba(22, 34, 61, 0.86)", border: "1px solid rgba(65, 88, 145, 0.76)", caretColor: "#6366f1" }}
           onFocus={e => (e.currentTarget.style.borderColor = "#6366f1")}
-          onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
+          onBlur={e => (e.currentTarget.style.borderColor = "rgba(65, 88, 145, 0.76)")} />
       </div>
 
       {/* Start session */}
@@ -116,7 +130,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
               onClick={() => handleStart(r.key)}
               disabled={!author.trim() || starting !== null}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-all disabled:opacity-40"
-              style={{ background: "var(--card)", border: "1px solid var(--border)", color: "#94a3b8" }}
+              style={{ background: "rgba(20, 31, 56, 0.88)", border: "1px solid rgba(62, 83, 137, 0.75)", color: "#94a3b8" }}
               onMouseEnter={e => {
                 if (author.trim()) {
                   e.currentTarget.style.borderColor = r.color;
@@ -124,7 +138,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                 }
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.borderColor = "rgba(62, 83, 137, 0.75)";
                 e.currentTarget.style.color = "#94a3b8";
               }}>
               {starting === r.key
@@ -153,8 +167,8 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
               return (
                 <div key={s.id} className="p-3.5 rounded-xl"
                   style={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
+                    background: "linear-gradient(160deg, rgba(23,34,61,0.82), rgba(14,22,44,0.9))",
+                    border: "1px solid rgba(62,83,137,0.76)",
                     ...(isOwn ? { borderLeft: "2px solid #6366f1" } : {}),
                   }}>
                   <div className="flex items-center justify-between gap-2 mb-1">
@@ -175,6 +189,16 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                           className="text-xs px-2 py-1 rounded-lg font-semibold"
                           style={{ background: "rgba(99,102,241,0.15)", color: "#818cf8", border: "1px solid rgba(99,102,241,0.3)" }}>
                           Continue
+                        </button>
+                      )}
+                      {!s.summary && (
+                        <button
+                          onClick={() => handleSummarizeSession(s)}
+                          disabled={summarizing === s.id}
+                          title="Save session summary"
+                          className="text-xs px-2 py-1 rounded-lg font-semibold transition-opacity"
+                          style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
+                          {summarizing === s.id ? "…" : "💾 Save"}
                         </button>
                       )}
                       <button
@@ -230,7 +254,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                     {items.map(lnk => (
                       <div key={lnk.id}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                        style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                        style={{ background: "rgba(20,31,56,0.88)", border: "1px solid rgba(62,83,137,0.75)" }}>
                         {lnk.link_url ? (
                           <a href={lnk.link_url} target="_blank" rel="noopener noreferrer"
                             className="text-xs hover:underline truncate flex-1"
@@ -255,7 +279,8 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
         </div>
       )}
 
-      {/* Feature context preview */}
+      {/*
+      Feature context preview intentionally hidden.
       {detail?.context && (
         <div className="mt-6">
           <label className="text-xs font-semibold uppercase tracking-wider block mb-2" style={{ color: "#475569" }}>
@@ -267,6 +292,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
           </pre>
         </div>
       )}
+      */}
     </div>
   );
 }

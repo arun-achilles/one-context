@@ -20,14 +20,15 @@ client = anthropic.Anthropic()
 # ── Q&A ──────────────────────────────────────────────────────────────────────
 
 QA_SYSTEM = """You are One Context, an AI co-pilot for the Colleqt software delivery team.
-Answer questions using only the context provided from Jira, Confluence, and codebase knowledge.
+Answer questions using only the numbered sources provided below.
 
 Rules:
-- Base answers strictly on the provided context. Do not invent facts.
-- If context only partially answers the question, say what you found and what's missing.
+- Base answers strictly on the provided sources. Do not invent facts.
+- Cite sources inline using their label, e.g. [S1], [S2]. Every claim must be traceable.
+- If sources only partially answer the question, say what you found and what is missing.
 - If you cannot find the answer, say so explicitly — never guess.
-- Always cite specific tickets, pages, or services by name so the user can follow up.
-- For status/progress questions: use bullet points. For decisions/explanations: use prose."""
+- For status/progress questions: use bullet points. For decisions/explanations: use prose.
+- Feature session summaries [Sx] and linked artefacts [Sx] take priority over general knowledge."""
 
 CLARIFY_SYSTEM = """You are One Context, a team AI assistant.
 The user's question is too vague. Ask one focused clarifying question to narrow it down."""
@@ -76,6 +77,27 @@ Extract the key fact, decision, or agreement from their message.
 
 CONV_SUMMARY_SYSTEM = """You are One Context. Extract 3-5 key decisions, agreements, or action items from this conversation as concise bullet points. Each bullet should be a complete, self-contained statement."""
 
+SESSION_CLOSE_SYSTEM = """You are One Context. Generate a structured session summary for a feature workspace session.
+
+Given the conversation transcript, produce a summary in this EXACT format (all sections required):
+
+DECISIONS:
+- <key decision or agreement made, self-contained>
+(list up to 4; omit section content if none)
+
+ACTIONS TAKEN:
+- <concrete action completed: story created, memory saved, page updated, etc.>
+(list up to 4; omit section content if none)
+
+OPEN QUESTIONS:
+- <unresolved question or next step that needs follow-up>
+(list up to 3; omit section content if none)
+
+SUMMARY:
+<1-2 sentence plain-language summary of what this session accomplished>
+
+Be concise. Each bullet must be a complete, self-contained statement. Do not invent content not present in the transcript."""
+
 CONFLUENCE_UPDATE_SYSTEM = """You are One Context. The user wants to update a Confluence page.
 
 Extract from their message:
@@ -116,29 +138,74 @@ def reasoner_node(state: AgentState) -> AgentState:
 
 def _answer_qa(state: AgentState, query: str) -> AgentState:
     chunks = state.get("retrieved_chunks", [])
-    context_parts, citations = [], []
 
-    for i, chunk in enumerate(chunks[:6]):
+    # Build numbered source blocks so the model can cite inline as [S1], [S2], etc.
+    # We label each source and track the mapping so we can later resolve which
+    # sources were actually cited — making citations a reasoning input, not afterthought.
+    source_index: list[dict] = []  # [{label, url, score, content_type}]
+    context_parts: list[str] = []
+
+    for i, chunk in enumerate(chunks[:8]):
+        label = f"S{i+1}"
+        ctype = chunk.get("content_type", "knowledge")
+        url = chunk.get("url", "")
+        score = chunk.get("score", 0)
+        # Brief source header so the model knows what kind of source this is
+        header = _source_header(label, ctype, url, score)
         context_parts.append(
-            f"[Source {i+1}] (score: {chunk['score']})\n"
-            f"URL: {chunk.get('url', 'n/a')}\n"
-            f"{chunk['content'][:800]}"
+            f"{header}\n{chunk['content'][:800]}"
         )
-        citations.append({"url": chunk.get("url", ""), "score": chunk["score"]})
+        source_index.append({"label": label, "url": url, "score": score, "content_type": ctype})
 
     context = "\n\n---\n\n".join(context_parts) or "No relevant context found."
     system = _build_system(QA_SYSTEM, state)
 
     response = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=1000,
+        max_tokens=1200,
         system=system,
         messages=[{
             "role": "user",
-            "content": f"Question: {query}\n\nContext:\n\n{context}",
+            "content": f"Question: {query}\n\nSources:\n\n{context}",
         }],
     )
-    return {**state, "answer": response.content[0].text, "citations": citations}
+
+    answer_text = response.content[0].text
+
+    # Only return citations for sources actually referenced in the answer.
+    # This means the citation list reflects what was used, not what was retrieved.
+    cited_labels = set(_re.findall(r"\[S(\d+)\]", answer_text))
+    citations = [
+        {"url": s["url"], "score": s["score"], "content_type": s["content_type"], "label": s["label"]}
+        for s in source_index
+        if s["label"][1:] in cited_labels and s["url"]
+    ]
+    # Fallback: if model cited nothing but we have high-confidence results, include top 3
+    if not citations:
+        citations = [
+            {"url": s["url"], "score": s["score"], "content_type": s["content_type"], "label": s["label"]}
+            for s in source_index[:3]
+            if s["url"] and s["score"] >= 0.5
+        ]
+
+    return {**state, "answer": answer_text, "citations": citations}
+
+
+def _source_header(label: str, ctype: str, url: str, score: float) -> str:
+    """One-line header for a source block that tells the model what kind of source it is."""
+    type_labels = {
+        "feature_session_summary": "Feature session summary",
+        "feature_link": "Feature linked artefact",
+        "team_memory": "Team memory",
+        "jira_issue": "Jira issue",
+        "confluence_page": "Confluence page",
+        "business_flow": "Codebase capability",
+        "shipped_feature": "Shipped feature",
+        "api_capability": "API capability",
+    }
+    type_label = type_labels.get(ctype, "Knowledge")
+    url_part = f" | {url}" if url else ""
+    return f"[{label}] {type_label}{url_part} (relevance: {score:.2f})"
 
 
 def _draft_story(state: AgentState, query: str) -> AgentState:
@@ -201,6 +268,53 @@ def _summarize_conversation(state: AgentState) -> str:
         max_tokens=400,
         system=CONV_SUMMARY_SYSTEM,
         messages=[{"role": "user", "content": f"Conversation:\n\n{transcript}"}],
+    )
+    return response.content[0].text.strip()
+
+
+def generate_session_summary(conversation_id: int) -> str:
+    """
+    Generate a structured session summary for a feature session.
+    Called externally by the API when a new session starts — summarizes the
+    previous session so its decisions carry forward automatically.
+
+    Returns a formatted string with DECISIONS / ACTIONS TAKEN / OPEN QUESTIONS / SUMMARY.
+    Returns empty string if the conversation has no meaningful messages.
+    """
+    from db.connection import cursor as _cursor
+    from langchain_core.messages import HumanMessage as _HM
+
+    with _cursor() as cur:
+        cur.execute(
+            """SELECT role, content FROM messages
+               WHERE conversation_id = %s ORDER BY created_at""",
+            (conversation_id,),
+        )
+        rows = cur.fetchall()
+
+    # Filter out system bootstrap messages and action markers
+    lines = []
+    for row in rows:
+        role = row["role"]
+        content = row["content"] or ""
+        if content.startswith("[FEATURE CONTEXT") or content.startswith("[FEATURE CONTEXT ACK]"):
+            continue
+        content = _re.sub(r"<!-- PENDING_ACTION:.*?-->", "", content, flags=_re.DOTALL).strip()
+        if not content:
+            continue
+        label = "User" if role == "user" else "Assistant"
+        lines.append(f"{label}: {content[:500]}")
+
+    if len(lines) < 2:
+        return ""
+
+    transcript = "\n\n".join(lines[-16:])  # last 16 exchanges max
+
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=600,
+        system=SESSION_CLOSE_SYSTEM,
+        messages=[{"role": "user", "content": f"Conversation transcript:\n\n{transcript}"}],
     )
     return response.content[0].text.strip()
 

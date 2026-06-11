@@ -7,9 +7,109 @@ import re
 from agent.state import AgentState
 from agent.tools.search_knowledge import search_knowledge, CONFIDENCE_THRESHOLD
 from agent.tools.memory_tool import search_memory
+from agent.tools.feature_tools import get_feature_retrieval_chunks
 
 # Matches Jira keys like CL-1524, OC-002, PROJ-99
 _JIRA_KEY_RE = re.compile(r'\b([A-Z][A-Z0-9]+-\d+)\b')
+
+
+def _msg_content(msg) -> str:
+    """Extract plain text from a LangChain message-like object."""
+    # Anthropic content blocks often expose a direct .text property.
+    text_attr = getattr(msg, "text", None)
+    if isinstance(text_attr, str):
+        return text_attr
+
+    content = getattr(msg, "content", "")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text":
+                parts.append(item.get("text", ""))
+            elif isinstance(item, str):
+                parts.append(item)
+        return "\n".join(p for p in parts if p)
+    return str(content or "")
+
+
+def _is_human_message(msg) -> bool:
+    """Best-effort check for a human/user message across message classes."""
+    t = (getattr(msg, "type", "") or "").lower()
+    cls = msg.__class__.__name__.lower()
+    return t in ("human", "user") or "human" in cls
+
+
+def _build_standalone_query(messages: list) -> str:
+    """
+    Build a retrieval-focused standalone query from the latest user turn plus
+    short conversational context (recent user turns + compressed summary).
+    """
+    if not messages:
+        return ""
+
+    latest = _msg_content(messages[-1]).strip()
+    if not latest:
+        return ""
+
+    summary = ""
+    prior_user_turns = []
+    for msg in reversed(messages[:-1]):
+        text = _msg_content(msg).strip()
+        if not text:
+            continue
+        if not summary and text.startswith("[EARLIER CONVERSATION SUMMARY]"):
+            summary = text.replace("[EARLIER CONVERSATION SUMMARY]", "", 1).strip()
+            continue
+        if _is_human_message(msg):
+            prior_user_turns.append(text)
+            if len(prior_user_turns) >= 2:
+                break
+
+    parts = [f"Current request: {latest}"]
+    if prior_user_turns:
+        prior_user_turns.reverse()
+        parts.append("Recent user context: " + " | ".join(prior_user_turns))
+    if summary:
+        parts.append("Earlier summary: " + summary[:500])
+
+    return "\n".join(parts)
+
+
+def _rewrite_query_with_haiku(standalone_query: str, latest_user_turn: str) -> str:
+    """
+    One cheap rewrite pass that resolves follow-ups/pronouns into a concise
+    standalone search query. Returns empty string on failure.
+    """
+    if not standalone_query:
+        return ""
+
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic()
+        system = (
+            "Rewrite the user's latest request into a single standalone retrieval query. "
+            "Use supplied context only. Expand pronouns/references when possible. "
+            "Keep it concise (max 2 lines). Return only the rewritten query."
+        )
+        prompt = (
+            f"Latest user request:\n{latest_user_turn}\n\n"
+            f"Context for disambiguation:\n{standalone_query}\n\n"
+            "Standalone retrieval query:"
+        )
+        resp = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=140,
+            temperature=0,
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        rewritten = "\n".join(_msg_content(block).strip() for block in (resp.content or []) if _msg_content(block).strip())
+        return rewritten
+    except Exception:
+        return ""
 
 
 def _fetch_live_jira(query: str) -> list[dict]:
@@ -22,10 +122,19 @@ def _fetch_live_jira(query: str) -> list[dict]:
     for key in dict.fromkeys(keys):  # deduplicate, preserve order
         try:
             issue = get_jira_issue(key)
+            estimate_parts = []
+            if issue.get("story_points") not in (None, ""):
+                estimate_parts.append(f"Story points: {issue['story_points']}")
+            if issue.get("original_estimate"):
+                estimate_parts.append(f"Original estimate: {issue['original_estimate']}")
+            if issue.get("remaining_estimate"):
+                estimate_parts.append(f"Remaining estimate: {issue['remaining_estimate']}")
+            estimate_line = ("\n" + "  |  ".join(estimate_parts)) if estimate_parts else ""
             live.append({
                 "content": (
                     f"[Live Jira] {issue['key']}: {issue['summary']}\n"
                     f"Status: {issue['status']}  |  Type: {issue['issue_type']}  |  Assignee: {issue['assignee']}\n"
+                    f"{estimate_line}"
                     f"{issue['description'][:600]}"
                 ),
                 "url": issue["url"],
@@ -81,11 +190,18 @@ def _fetch_live_confluence_search(query: str) -> list[dict]:
 
 
 def retriever_node(state: AgentState) -> AgentState:
-    query = state["messages"][-1].content
+    latest_query = _msg_content(state["messages"][-1]).strip()
+    query = _build_standalone_query(state["messages"]) or latest_query
     intent = state.get("intent", "qa")
+    feature_id = state.get("feature_id")
+
+    # 0. Feature-aware retrieval: session summaries + linked artefacts first
+    feature_chunks = []
+    if feature_id:
+        feature_chunks = get_feature_retrieval_chunks(feature_id, query)
 
     # 1. Live Jira key lookups — explicitly mentioned tickets always resolve first
-    live_chunks = _fetch_live_jira(query)
+    live_chunks = _fetch_live_jira(latest_query)
 
     # 2. Vector search + team memory
     chunks = search_knowledge(query)
@@ -105,8 +221,36 @@ def retriever_node(state: AgentState) -> AgentState:
         if m["score"] >= CONFIDENCE_THRESHOLD
     ]
 
-    all_chunks = live_chunks + memory_chunks + chunks
+    # Feature chunks are intentionally placed first to prioritize current
+    # workspace context before broader global knowledge.
+    all_chunks = feature_chunks + live_chunks + memory_chunks + chunks
     top_score = all_chunks[0]["score"] if all_chunks else 0
+
+    # 2b. One-shot rewrite retry for ambiguous follow-ups before live search fallback.
+    # Only retry when confidence is low and we don't already have explicit live Jira hits.
+    if top_score < CONFIDENCE_THRESHOLD and not live_chunks:
+        rewritten_query = _rewrite_query_with_haiku(query, latest_query)
+        if rewritten_query and rewritten_query.lower() != query.lower():
+            retry_chunks = search_knowledge(rewritten_query)
+            retry_memories = search_memory(rewritten_query, top_k=2)
+            retry_memory_chunks = [
+                {
+                    "content": f"[Team memory] {m['content']}"
+                               + (f" — {m['context']}" if m.get("context") else ""),
+                    "url": "",
+                    "content_type": "team_memory",
+                    "tags": m.get("tags", []),
+                    "score": m["score"],
+                    "high_confidence": m["score"] >= CONFIDENCE_THRESHOLD,
+                }
+                for m in retry_memories
+                if m["score"] >= CONFIDENCE_THRESHOLD
+            ]
+            if retry_chunks or retry_memory_chunks:
+                all_chunks = all_chunks + retry_memory_chunks + retry_chunks
+                retry_candidates = retry_memory_chunks + retry_chunks
+                retry_top = retry_candidates[0]["score"] if retry_candidates else 0
+                top_score = max(top_score, retry_top)
 
     # 3. Supplement with live API search when confidence is low or intent demands live data
     if intent == "pipeline_query":

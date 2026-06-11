@@ -13,9 +13,16 @@ def responder_node(state: AgentState) -> AgentState:
     answer = state.get("answer", "I could not find an answer.")
     citations = state.get("citations", [])
 
-    # Build display text — strip the hidden marker but keep the marker in the
-    # AIMessage so the act node can find it on the next turn
+    # Build display text:
+    # 1. Strip the hidden PENDING_ACTION marker (kept in AIMessage for act node)
+    # 2. Replace inline [Sx] citation labels with clean superscript-style markers
     display = _MARKER_RE.sub("", answer).rstrip()
+    # Convert [S1], [S2] → ¹, ² etc. for cleaner chat display
+    def _to_superscript(m: re.Match) -> str:
+        n = int(m.group(1))
+        supers = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+        return "".join(supers[int(d)] for d in str(n))
+    display = re.sub(r"\[S(\d+)\]", _to_superscript, display)
 
     if citations and not state.get("needs_clarification"):
         unique_urls = list(dict.fromkeys(c["url"] for c in citations if c.get("url")))

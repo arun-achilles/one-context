@@ -8,6 +8,54 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _first_non_empty(*values):
+    for value in values:
+        if value not in (None, "", 0):
+            return value
+    return None
+
+
+def _format_seconds(seconds: int | None) -> str:
+    if not seconds:
+        return ""
+    hours = round(seconds / 3600, 1)
+    return f"{hours:g}h"
+
+
+def _extract_estimates(fields: dict) -> dict:
+    """Best-effort estimate extraction across Jira Cloud/DC field variants."""
+    timetracking = fields.get("timetracking") or {}
+
+    # Story points field IDs are instance-specific; check common defaults.
+    story_points = _first_non_empty(
+        fields.get("customfield_10016"),
+        fields.get("customfield_10024"),
+        fields.get("customfield_10002"),
+        fields.get("customfield_10004"),
+    )
+
+    original_seconds = _first_non_empty(
+        timetracking.get("originalEstimateSeconds"),
+        fields.get("timeoriginalestimate"),
+    )
+    remaining_seconds = _first_non_empty(
+        timetracking.get("remainingEstimateSeconds"),
+        fields.get("timeestimate"),
+    )
+
+    return {
+        "story_points": story_points,
+        "original_estimate": _first_non_empty(
+            timetracking.get("originalEstimate"),
+            _format_seconds(original_seconds),
+        ) or "",
+        "remaining_estimate": _first_non_empty(
+            timetracking.get("remainingEstimate"),
+            _format_seconds(remaining_seconds),
+        ) or "",
+    }
+
+
 def _client() -> Jira:
     return Jira(
         url=os.environ["JIRA_URL"],
@@ -21,6 +69,7 @@ def get_jira_issue(key: str) -> dict:
     jira = _client()
     issue = jira.issue(key)
     fields = issue.get("fields", {})
+    estimates = _extract_estimates(fields)
     return {
         "key": issue["key"],
         "url": f"{os.environ['JIRA_URL']}/browse/{issue['key']}",
@@ -30,6 +79,9 @@ def get_jira_issue(key: str) -> dict:
         "assignee": ((fields.get("assignee") or {}).get("displayName", "Unassigned")),
         "description": str(fields.get("description") or ""),
         "labels": fields.get("labels", []),
+        "story_points": estimates["story_points"],
+        "original_estimate": estimates["original_estimate"],
+        "remaining_estimate": estimates["remaining_estimate"],
     }
 
 

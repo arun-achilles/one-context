@@ -95,6 +95,12 @@ export async function deleteSession(featureId: string, sessionId: number): Promi
   if (!res.ok) throw new Error("Failed to delete session");
 }
 
+export async function summarizeSession(featureId: string, sessionId: number): Promise<{ session_id: number; summary: string }> {
+  const res = await fetch(`${BASE}/features/${featureId}/sessions/${sessionId}/summarize`, { method: "POST" });
+  if (!res.ok) throw new Error("Failed to summarize session");
+  return res.json();
+}
+
 // ── Conversations ─────────────────────────────────────────────────────────────
 
 export async function createConversation(topic: string): Promise<Conversation> {
@@ -119,7 +125,7 @@ export async function* streamChat(
   conversationId: number,
   message: string,
   author: string
-): AsyncGenerator<{ type: string; content?: string; sources?: string[]; detail?: string }> {
+): AsyncGenerator<{ type: string; content?: string; sources?: string[]; rich_sources?: Array<{ url: string; label: string; content_type: string; score: number }>; detail?: string }> {
   const res = await fetch(`${BASE}/conversations/${conversationId}/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
