@@ -77,7 +77,7 @@ function WelcomeScreen({ onGeneralChat }: { onGeneralChat: () => void }) {
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
       {/* Logo */}
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-2"
-        style={{ background: "#ffde22", color: "#0a0a0a" }}>
+        style={{ background: "#ffe566", color: "#0a0a0a" }}>
         ⬡
       </div>
       <div>
@@ -91,9 +91,9 @@ function WelcomeScreen({ onGeneralChat }: { onGeneralChat: () => void }) {
       <div className="flex flex-col gap-3 w-full max-w-sm">
         <button onClick={onGeneralChat}
           className="flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: "#ffde22", color: "#0a0a0a" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "#c8ac00")}
-          onMouseLeave={e => (e.currentTarget.style.background = "#ffde22")}>
+          style={{ background: "#ffe566", color: "#0a0a0a" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "#e6c800")}
+          onMouseLeave={e => (e.currentTarget.style.background = "#ffe566")}>
           <span>💬</span>
           Start a general chat
         </button>

@@ -34,13 +34,13 @@ body {
   font-family: 'JetBrains Mono', monospace;
   background: #111111; border: 1px solid #2a2a2a;
   border-radius: 4px; padding: 0.1rem 0.35rem;
-  font-size: 0.82em; color: #ffde22;
+  font-size: 0.82em; color: #ffe566;
 }
 
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .typing-cursor::after {
   content: '▊'; animation: blink 1s infinite;
-  color: #ffde22; font-size: 0.8em;
+  color: #ffe566; font-size: 0.8em;
 }
 
 @keyframes fadeUp {

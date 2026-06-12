@@ -34,7 +34,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
       <div className="flex justify-center fade-up">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-          style={{ background: "rgba(255,222,34,0.08)", border: "1px solid rgba(255,222,34,0.2)", color: "#ffde22" }}>
+          style={{ background: "rgba(255,222,34,0.08)", border: "1px solid rgba(255,222,34,0.2)", color: "#ffe566" }}>
           <span>💡</span>
           <span>Takeaway saved: {summary}</span>
         </div>
@@ -47,7 +47,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       {/* Avatar */}
       <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
         style={isUser
-          ? { background: "#ffde22", color: "#0a0a0a" }
+          ? { background: "#ffe566", color: "#0a0a0a" }
           : { background: "#222222", color: "#888888" }}>
         {isUser ? "U" : "⬡"}
       </div>
@@ -58,7 +58,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           isUser ? "rounded-tr-sm" : "rounded-tl-sm"
         }`}
           style={isUser
-            ? { background: "#111111", color: "#ffffff", border: "1px solid #ffde22" }
+            ? { background: "#111111", color: "#ffffff", border: "1px solid #ffe566" }
             : { background: "#1a1a1a", color: "#ffffff", border: "1px solid #2a2a2a" }}>
           {msg.streaming && !cleanContent ? (
             <span className="typing-cursor text-xs" style={{ color: "#555555" }}>Thinking</span>
@@ -83,7 +83,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
               return (
                 <a key={i} href={src.url} target="_blank" rel="noopener noreferrer"
                   className="text-[10px] px-2 py-0.5 rounded-full transition-all flex items-center gap-1"
-                  style={{ background: "rgba(255,222,34,0.08)", color: "#ffde22", border: "1px solid rgba(255,222,34,0.25)" }}
+                  style={{ background: "rgba(255,222,34,0.08)", color: "#ffe566", border: "1px solid rgba(255,222,34,0.25)" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,222,34,0.15)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,222,34,0.08)")}>
                   <span>{typeIcon}</span>
@@ -248,9 +248,9 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
   const artefacts = links.filter(l => l.link_type !== "memory");
 
   const ARTEFACT_META: Record<string, { icon: string; color: string }> = {
-    jira_story:      { icon: "📋", color: "#ffde22" },
-    jira_task:       { icon: "✅", color: "#ffde22" },
-    jira_epic:       { icon: "🏔️", color: "#ffde22" },
+    jira_story:      { icon: "📋", color: "#ffe566" },
+    jira_task:       { icon: "✅", color: "#ffe566" },
+    jira_epic:       { icon: "🏔️", color: "#ffe566" },
     confluence_page: { icon: "📄", color: "#ffffff" },
     github_pr:       { icon: "🔀", color: "#888888" },
   };
@@ -263,8 +263,8 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {featureName && (
         <div className="flex-shrink-0 px-6 py-2.5 flex items-center gap-2.5 border-b"
           style={{ background: "rgba(255,222,34,0.05)", borderColor: "rgba(255,222,34,0.2)" }}>
-          <div className="w-2 h-2 rounded-full" style={{ background: "#ffde22" }} />
-          <span className="text-xs" style={{ color: "#ffde22" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: "#ffe566" }} />
+          <span className="text-xs" style={{ color: "#ffe566" }}>
             <span className="font-semibold">{featureName}</span>
           </span>
           <span className="text-[10px] font-mono" style={{ color: "#888888" }}>{featureId}</span>
@@ -302,7 +302,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
                 <button key={s} onClick={() => send(s)}
                   className="text-xs text-left px-3.5 py-2.5 rounded-xl transition-all"
                   style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#888888" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#ffde22"; e.currentTarget.style.color = "#ffffff"; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#ffe566"; e.currentTarget.style.color = "#ffffff"; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.color = "#888888"; }}>
                   {s}
                 </button>
@@ -328,7 +328,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             rows={1}
             disabled={loading}
             className="flex-1 bg-transparent text-sm outline-none resize-none px-2 py-1.5 max-h-32"
-            style={{ caretColor: "#ffde22", color: "#ffffff" }}
+            style={{ caretColor: "#ffe566", color: "#ffffff" }}
             onInput={e => {
               const t = e.currentTarget;
               t.style.height = "auto";
@@ -344,7 +344,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               style={{
                 background: "rgba(255,222,34,0.08)",
                 border: "1px solid rgba(255,222,34,0.2)",
-                color: "#ffde22"
+                color: "#ffe566"
               }}>
               💡
             </button>
@@ -353,9 +353,9 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
-            style={{ background: input.trim() && !loading ? "#ffde22" : "#1a1a1a" }}>
+            style={{ background: input.trim() && !loading ? "#ffe566" : "#1a1a1a" }}>
             {loading
-              ? <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#ffde22", borderTopColor: "transparent" }} />
+              ? <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#ffe566", borderTopColor: "transparent" }} />
               : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={input.trim() && !loading ? "#0a0a0a" : "#555555"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             }
           </button>
@@ -375,11 +375,11 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
           <div className="p-4 border-b" style={{ borderColor: "#2a2a2a" }}>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm">💡</span>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#ffde22" }}>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#ffe566" }}>
                 Takeaways
               </span>
               <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-                style={{ background: "rgba(255,222,34,0.1)", color: "#ffde22" }}>
+                style={{ background: "rgba(255,222,34,0.1)", color: "#ffe566" }}>
                 {takeaways.length}
               </span>
             </div>
@@ -397,7 +397,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
                     <div className="flex items-start gap-2 px-3 py-2">
                       <span className="text-xs mt-0.5 flex-shrink-0">💡</span>
                       <p className={`text-xs leading-relaxed ${expandedTakeaway === t.id ? "" : "line-clamp-2"}`}
-                        style={{ color: "#c8ac00" }}>
+                        style={{ color: "#e6c800" }}>
                         {t.title || t.link_id}
                       </p>
                     </div>
