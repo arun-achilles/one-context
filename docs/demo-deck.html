@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>One Context — Demo Deck</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:      #0a0a0a;
+    --surface: #111111;
+    --card:    #1a1a1a;
+    --border:  #2a2a2a;
+    --text:    #ffffff;
+    --muted:   #888888;
+    --dim:     #444444;
+    --accent:  #ffde22;
+    --accent2: #c8ac00;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+  }
+
+  /* ── DECK ───────────────────────────────────── */
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── SLIDE ──────────────────────────────────── */
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 6vh 8vw;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity .4s ease, transform .4s ease;
+    pointer-events: none;
+  }
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* ── SLIDE TYPES ────────────────────────────── */
+  .slide-title { align-items: center; text-align: center; }
+  .slide-split  { flex-direction: row; gap: 8vw; align-items: center; }
+
+  /* ── TYPOGRAPHY ─────────────────────────────── */
+  .eyebrow {
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+  h1 { font-size: clamp(2.4rem, 5vw, 4rem); font-weight: 800; line-height: 1.08; letter-spacing: -.02em; }
+  h2 { font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 700; line-height: 1.15; letter-spacing: -.015em; }
+  .sub {
+    font-size: clamp(.95rem, 1.6vw, 1.15rem);
+    color: var(--muted);
+    margin-top: 1.1rem;
+    line-height: 1.65;
+    max-width: 54ch;
+  }
+
+  /* ── ACCENT WORD ────────────────────────────── */
+  .y { color: var(--accent); }
+
+  /* ── BULLET LIST ────────────────────────────── */
+  .bullets { list-style: none; margin-top: 2.2rem; display: flex; flex-direction: column; gap: .9rem; }
+  .bullets li {
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+    font-size: clamp(.9rem, 1.4vw, 1.05rem);
+    line-height: 1.55;
+    color: #cccccc;
+  }
+  .bullets li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: .5em;
+  }
+  .bullets li strong { color: #fff; }
+
+  /* ── GRID CARDS ─────────────────────────────── */
+  .cards { display: grid; gap: 1rem; margin-top: 2.2rem; }
+  .cards.col2 { grid-template-columns: 1fr 1fr; }
+  .cards.col3 { grid-template-columns: repeat(3, 1fr); }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+  }
+  .card .icon { font-size: 1.6rem; margin-bottom: .7rem; }
+  .card h3 { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: .4rem; }
+  .card p  { font-size: .82rem; color: var(--muted); line-height: 1.6; }
+  .card.accent { border-color: rgba(255,222,34,.35); background: rgba(255,222,34,.04); }
+  .card.accent h3 { color: var(--accent); }
+
+  /* ── STAT ROW ───────────────────────────────── */
+  .stats { display: flex; gap: 3rem; margin-top: 2.4rem; }
+  .stat .num { font-size: clamp(2rem, 4vw, 3.2rem); font-weight: 800; color: var(--accent); line-height: 1; }
+  .stat .label { font-size: .82rem; color: var(--muted); margin-top: .35rem; max-width: 14ch; line-height: 1.4; }
+
+  /* ── FLOW ROW ───────────────────────────────── */
+  .flow { display: flex; align-items: center; gap: .6rem; margin-top: 2rem; flex-wrap: wrap; }
+  .flow-step {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: .55rem 1.1rem;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #ccc;
+    white-space: nowrap;
+  }
+  .flow-step.y { border-color: rgba(255,222,34,.4); background: rgba(255,222,34,.07); color: var(--accent); }
+  .flow-arrow { color: var(--dim); font-size: .9rem; }
+
+  /* ── PILL TAGS ──────────────────────────────── */
+  .tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.6rem; }
+  .tag {
+    font-size: .75rem;
+    font-weight: 600;
+    padding: .35rem .9rem;
+    border-radius: 100px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .tag.y { background: rgba(255,222,34,.1); border-color: rgba(255,222,34,.3); color: var(--accent); }
+
+  /* ── CODE BLOCK ─────────────────────────────── */
+  .convo {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    margin-top: 1.8rem;
+    max-width: 52ch;
+    font-size: .85rem;
+    line-height: 1.7;
+  }
+  .msg-u { color: #ccc; }
+  .msg-u span { color: var(--accent); font-weight: 700; }
+  .msg-a { color: var(--muted); margin-top: .5rem; }
+  .msg-a span { color: #4ade80; font-weight: 600; }
+
+  /* ── SPLIT LEFT/RIGHT ───────────────────────── */
+  .split-left  { flex: 1 1 48%; }
+  .split-right { flex: 1 1 48%; }
+
+  /* ── BIG NUMBER HERO ────────────────────────── */
+  .big-hero { font-size: clamp(5rem, 12vw, 9rem); font-weight: 900; color: var(--accent); line-height: 1; letter-spacing: -.04em; }
+
+  /* ── PROGRESS BAR ───────────────────────────── */
+  #progress {
+    position: fixed;
+    bottom: 0; left: 0;
+    height: 2px;
+    background: var(--accent);
+    transition: width .35s ease;
+    z-index: 99;
+  }
+
+  /* ── SLIDE COUNTER ──────────────────────────── */
+  #counter {
+    position: fixed;
+    bottom: 1.4rem; right: 2rem;
+    font-size: .72rem;
+    color: var(--dim);
+    letter-spacing: .08em;
+    z-index: 99;
+  }
+
+  /* ── NAV DOTS ───────────────────────────────── */
+  #dots {
+    position: fixed;
+    bottom: 1.2rem; left: 50%;
+    transform: translateX(-50%);
+    display: flex; gap: .45rem;
+    z-index: 99;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: background .25s, transform .25s;
+  }
+  .dot.on { background: var(--accent); transform: scale(1.35); }
+
+  /* ── HINT ───────────────────────────────────── */
+  #hint {
+    position: fixed;
+    bottom: 1.3rem; left: 2rem;
+    font-size: .68rem;
+    color: var(--dim);
+    z-index: 99;
+    letter-spacing: .04em;
+  }
+
+  /* ── SLIDE NUMBER BADGE ─────────────────────── */
+  .slide-badge {
+    position: absolute;
+    top: 2.2rem; right: 2.5rem;
+    font-size: .65rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  /* ── DIVIDER LINE ───────────────────────────── */
+  .divider {
+    width: 48px; height: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    margin-bottom: 1.6rem;
+  }
+
+  /* ── ROLE PILLS ─────────────────────────────── */
+  .roles { display: flex; gap: .6rem; margin-top: 1.6rem; flex-wrap: wrap; }
+  .role {
+    font-size: .78rem; font-weight: 700;
+    padding: .4rem 1rem;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .role.po    { border-color: rgba(255,222,34,.4); color: var(--accent); background: rgba(255,222,34,.06); }
+  .role.tl    { border-color: rgba(100,220,255,.3); color: #64dcff; background: rgba(100,220,255,.05); }
+  .role.dev   { border-color: rgba(100,220,130,.3); color: #64dc82; background: rgba(100,220,130,.05); }
+  .role.ba    { border-color: rgba(255,180,60,.3); color: #ffb43c; background: rgba(255,180,60,.05); }
+  .role.qa    { border-color: rgba(255,100,180,.3); color: #ff64b4; background: rgba(255,100,180,.05); }
+
+  /* ── TITLE SLIDE LOGO ───────────────────────── */
+  .logo-big {
+    width: 80px; height: 80px;
+    background: var(--accent);
+    color: #0a0a0a;
+    font-size: 2.4rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 18px;
+    margin-bottom: 2rem;
+    font-weight: 900;
+  }
+
+  /* ── CLOSING CTA ────────────────────────────── */
+  .cta-box {
+    margin-top: 2.4rem;
+    border: 1px solid rgba(255,222,34,.4);
+    background: rgba(255,222,34,.05);
+    border-radius: 12px;
+    padding: 1.4rem 2rem;
+    display: inline-block;
+  }
+  .cta-box p { color: var(--muted); font-size: .9rem; margin-top: .4rem; }
+
+  /* ── TOOL GRID ──────────────────────────────── */
+  .tool-row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+  .tool {
+    font-size: .75rem; font-weight: 600;
+    padding: .3rem .75rem;
+    border-radius: 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .tool.y { border-color: rgba(255,222,34,.3); color: var(--accent); background: rgba(255,222,34,.06); }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 0 · TITLE                          -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide slide-title active">
+    <div class="logo-big">⬡</div>
+    <div class="eyebrow">GlobalHack 2026 · Thoughtworks</div>
+    <h1>One <span class="y">Context</span></h1>
+    <p class="sub">The shared intelligence layer for software delivery teams.<br/>
+    One place for every role. Every tool. Every decision.</p>
+    <div class="tags" style="margin-top:2rem;justify-content:center;">
+      <span class="tag y">AI Co-Pilot</span>
+      <span class="tag">Jira</span>
+      <span class="tag">Confluence</span>
+      <span class="tag">GitHub</span>
+      <span class="tag y">Pluggable</span>
+      <span class="tag">LangGraph</span>
+      <span class="tag">pgvector</span>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 1 · THE PROBLEM                   -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">01 / Problem</div>
+    <div class="divider"></div>
+    <div class="eyebrow">Background</div>
+    <h2>Delivery teams <span class="y">bleed context</span><br/>between every tool and role.</h2>
+    <ul class="bullets">
+      <li>PO writes a story in Jira. Dev has never read it. Tech Lead asks again.</li>
+      <li>A decision made in Confluence is invisible in GitHub, Jira, and Slack.</li>
+      <li>Every sprint kickoff, every new joiner — same questions, from scratch.</li>
+      <li>Each tool is a silo. Nobody has the full picture.</li>
+    </ul>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 2 · THE PAIN                      -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">02 / Pain</div>
+    <div class="divider"></div>
+    <div class="eyebrow">Current Challenges</div>
+    <h2>Concrete cost of <span class="y">lost context.</span></h2>
+    <div class="stats">
+      <div class="stat">
+        <div class="num">30%</div>
+        <div class="label">of sprint time re-establishing context</div>
+      </div>
+      <div class="stat">
+        <div class="num">5+</div>
+        <div class="label">tools a dev context-switches between daily</div>
+      </div>
+      <div class="stat">
+        <div class="num">0</div>
+        <div class="label">shared memory across roles after a sprint ends</div>
+      </div>
+    </div>
+    <ul class="bullets" style="margin-top:2rem;">
+      <li><strong>PO ↔ Tech Lead gap:</strong> stories drafted without codebase awareness</li>
+      <li><strong>No institutional memory:</strong> decisions evaporate when people leave</li>
+      <li><strong>Onboarding tax:</strong> new team members have no fast path to context</li>
+    </ul>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 3 · OUR SOLUTION                  -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">03 / Solution</div>
+    <div class="divider"></div>
+    <div class="eyebrow">What We Built</div>
+    <h2><span class="y">One Context</span> — a shared AI<br/>intelligence layer for your team.</h2>
+    <p class="sub">Ingest every tool. Answer in context. Remember every decision.<br/>
+    Built around a <strong style="color:#fff">Feature Workspace</strong> — one shared space for all roles.</p>
+    <div class="cards col3" style="margin-top:2rem;">
+      <div class="card accent">
+        <div class="icon">🔍</div>
+        <h3>Discover</h3>
+        <p>Ask what exists before you build it. Grounded answers from Jira, Confluence, and your codebase.</p>
+      </div>
+      <div class="card accent">
+        <div class="icon">✍️</div>
+        <h3>Draft & Act</h3>
+        <p>Create Jira stories, update tickets, create Confluence docs — all from chat. Confirm before it happens.</p>
+      </div>
+      <div class="card accent">
+        <div class="icon">💡</div>
+        <h3>Takeaways</h3>
+        <p>Save decisions once. They surface automatically in every future session for this feature.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 4 · FEATURE WORKSPACE             -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">04 / Feature Workspace</div>
+    <div class="divider"></div>
+    <div class="eyebrow">The Core Idea</div>
+    <h2>Every role. Same context.<br/><span class="y">Zero re-briefing.</span></h2>
+    <p class="sub">A Feature workspace accumulates everything: sessions, takeaways, linked Jira cards, Confluence pages. Each role picks up exactly where the last left off.</p>
+    <div class="roles">
+      <span class="role po">📋 Product Owner</span>
+      <span class="role ba">🧾 Business Analyst</span>
+      <span class="role tl">🏗️ Tech Lead</span>
+      <span class="role dev">💻 Developer</span>
+      <span class="role qa">🧪 QA Engineer</span>
+    </div>
+    <div class="flow" style="margin-top:1.8rem;">
+      <span class="flow-step y">PO drafts story</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Tech Lead adds tech tasks</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">Dev picks it up</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step">QA creates test plan</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-step y">All linked, remembered</span>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 5 · DEMO SCENARIOS                -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">05 / Live Demo</div>
+    <div class="divider"></div>
+    <div class="eyebrow">What You'll See</div>
+    <h2>5 scenes. <span class="y">All from one chat.</span></h2>
+    <div class="cards col2" style="margin-top:1.8rem;">
+      <div class="card">
+        <div class="icon">🔍</div>
+        <h3>1 · Discover</h3>
+        <p>PO asks "what existing capabilities can we reuse?" — agent answers grounded in real Jira + code.</p>
+      </div>
+      <div class="card">
+        <div class="icon">✍️</div>
+        <h3>2 · Draft Story</h3>
+        <p>Describe an idea → agent drafts a full Jira story with ACs → confirm → created in Jira.</p>
+      </div>
+      <div class="card">
+        <div class="icon">🔗</div>
+        <h3>3 · Link Ticket</h3>
+        <p>"Add CL-1524 to this feature" → agent fetches ticket live → links it → appears in panel.</p>
+      </div>
+      <div class="card">
+        <div class="icon">💡</div>
+        <h3>4 · Save Takeaway</h3>
+        <p>Click 💡 → agent summarizes key decisions → confirm → auto-injected in all future sessions.</p>
+      </div>
+    </div>
+    <div class="convo">
+      <div class="msg-u"><span>PO →</span> "Add technical tasks to CL-1524 — needs cache invalidation"</div>
+      <div class="msg-a"><span>✓</span> Created 3 subtasks under CL-1524, linked to feature OC-002</div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 6 · PLUGGABLE ARCHITECTURE        -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide slide-split">
+    <div class="split-left">
+      <div class="slide-badge">06 / Architecture</div>
+      <div class="divider"></div>
+      <div class="eyebrow">Extensibility</div>
+      <h2>Jira &amp; Confluence are <span class="y">defaults.</span><br/>Not requirements.</h2>
+      <p class="sub">A pluggable <strong style="color:#fff">BaseConnector</strong> interface. Any tool that exposes an API can plug in — same ingestion pipeline, same agent, same Feature workspace.</p>
+    </div>
+    <div class="split-right">
+      <div style="margin-bottom:1rem;font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">Currently</div>
+      <div class="tool-row">
+        <span class="tool y">Jira</span>
+        <span class="tool y">Confluence</span>
+        <span class="tool y">GitHub</span>
+        <span class="tool y">Codebase</span>
+      </div>
+      <div style="margin-top:1.4rem;margin-bottom:.8rem;font-size:.78rem;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;">Plug in next</div>
+      <div class="tool-row">
+        <span class="tool">Notion</span>
+        <span class="tool">Linear</span>
+        <span class="tool">Miro</span>
+        <span class="tool">Mural</span>
+        <span class="tool">Slack</span>
+        <span class="tool">Trello</span>
+        <span class="tool">Asana</span>
+      </div>
+      <div class="card" style="margin-top:1.8rem;">
+        <h3 style="font-size:.85rem;color:var(--accent);">BaseConnector interface</h3>
+        <p style="font-size:.78rem;font-family:monospace;margin-top:.5rem;color:#666;">
+          extract(config) → [RawContent]<br/>
+          classify → chunk → embed → agent
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 7 · TECH STACK                    -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">07 / Tech</div>
+    <div class="divider"></div>
+    <div class="eyebrow">Technical Approach</div>
+    <h2>Production-ready stack.<br/><span class="y">Runs in Docker.</span></h2>
+    <div class="cards col2" style="margin-top:1.8rem;">
+      <div class="card">
+        <h3>🤖 Agent Layer</h3>
+        <p><strong style="color:#fff">LangGraph</strong> — route → retrieve → reason → act. Live Jira/Confluence API calls on every query. Confirm-before-write for all mutations.</p>
+      </div>
+      <div class="card">
+        <h3>🧠 Intelligence</h3>
+        <p><strong style="color:#fff">Claude Sonnet</strong> for reasoning &amp; drafting. <strong style="color:#fff">Claude Haiku</strong> for classification &amp; extraction. <strong style="color:#fff">all-mpnet-base-v2</strong> for local embeddings.</p>
+      </div>
+      <div class="card">
+        <h3>🗄️ Knowledge Store</h3>
+        <p><strong style="color:#fff">PostgreSQL + pgvector</strong>. Memories never auto-deleted. Feature workspace persists sessions, takeaways, and artefact links.</p>
+      </div>
+      <div class="card">
+        <h3>⚡ Infrastructure</h3>
+        <p><strong style="color:#fff">FastAPI</strong> + SSE streaming. <strong style="color:#fff">Celery</strong> for async sync. <strong style="color:#fff">Next.js</strong> UI. <strong style="color:#fff">Docker Compose</strong> — one command to run everything.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 8 · OUTCOMES                      -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">08 / Outcomes</div>
+    <div class="divider"></div>
+    <div class="eyebrow">Expected Outcomes</div>
+    <h2>Measurable impact for<br/><span class="y">every delivery team.</span></h2>
+    <div class="stats">
+      <div class="stat">
+        <div class="num">&lt;5m</div>
+        <div class="label">PO creates a grounded Jira story</div>
+      </div>
+      <div class="stat">
+        <div class="num">0</div>
+        <div class="label">re-briefing when switching roles in a Feature</div>
+      </div>
+      <div class="stat">
+        <div class="num">∞</div>
+        <div class="label">institutional memory that never leaves</div>
+      </div>
+    </div>
+    <ul class="bullets" style="margin-top:2rem;">
+      <li><strong>For PO/BA:</strong> stories grounded in what's actually built, not guesswork</li>
+      <li><strong>For Tech Lead:</strong> technical context carried from prior sessions automatically</li>
+      <li><strong>For Dev/QA:</strong> full feature history in one chat — no Jira archaeology</li>
+      <li><strong>For Thoughtworks:</strong> accelerate AI delivery adoption with a proven playbook</li>
+    </ul>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 9 · SUCCESS CRITERIA              -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide">
+    <div class="slide-badge">09 / Success</div>
+    <div class="divider"></div>
+    <div class="eyebrow">Success Criteria</div>
+    <h2>How we know<br/><span class="y">it's working.</span></h2>
+    <div class="cards col2" style="margin-top:1.8rem;">
+      <div class="card accent">
+        <h3>Story creation time</h3>
+        <p>Baseline vs. One Context. Target: idea → created Jira story in under 5 minutes for a PO who's never used the feature before.</p>
+      </div>
+      <div class="card accent">
+        <h3>Context carry-over</h3>
+        <p>Switch roles on the same Feature. Target: new session has full prior context without any manual briefing by the previous role.</p>
+      </div>
+      <div class="card">
+        <h3>Decision persistence</h3>
+        <p>Save a takeaway in session 1. Open session 2 three days later. Target: takeaway auto-surfaces in the agent's first response.</p>
+      </div>
+      <div class="card">
+        <h3>Live data accuracy</h3>
+        <p>Ask about a ticket created 5 minutes ago. Target: agent retrieves live Jira data, not stale embeddings, on every query.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ──────────────────────────────────────── -->
+  <!-- SLIDE 10 · CLOSE                        -->
+  <!-- ──────────────────────────────────────── -->
+  <section class="slide slide-title">
+    <div class="logo-big">⬡</div>
+    <div class="eyebrow">GlobalHack-OneContext</div>
+    <h1>One <span class="y">Context.</span></h1>
+    <p class="sub" style="text-align:center;">Not another AI chatbot.<br/>The shared memory your delivery team never had.</p>
+    <div class="cta-box">
+      <div style="font-size:1rem;font-weight:700;color:var(--accent);">Built on Thoughtworks Delivery Experience</div>
+      <p>Pluggable · Role-aware · Grounded in real team data · Ships in Docker</p>
+    </div>
+    <div class="tags" style="margin-top:1.8rem;justify-content:center;">
+      <span class="tag y">Claude AI</span>
+      <span class="tag y">LangGraph</span>
+      <span class="tag y">pgvector</span>
+      <span class="tag">FastAPI</span>
+      <span class="tag">Next.js</span>
+      <span class="tag">Docker</span>
+    </div>
+  </section>
+
+</div><!-- /deck -->
+
+<!-- Progress bar -->
+<div id="progress"></div>
+<!-- Counter -->
+<div id="counter">1 / 11</div>
+<!-- Nav dots -->
+<div id="dots"></div>
+<!-- Hint -->
+<div id="hint">← → navigate &nbsp;·&nbsp; Space next</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  const counter  = document.getElementById('counter');
+  const dotsEl   = document.getElementById('dots');
+  const total    = slides.length;
+  let cur = 0;
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.addEventListener('click', () => goTo(i));
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n, dir = 1) {
+    if (n < 0 || n >= total || n === cur) return;
+    const prev = cur;
+    cur = n;
+
+    slides[prev].classList.remove('active');
+    slides[prev].classList.add('exit');
+    setTimeout(() => slides[prev].classList.remove('exit'), 420);
+
+    slides[cur].classList.add('active');
+
+    // dots
+    dotsEl.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === cur));
+
+    // counter
+    counter.textContent = `${cur + 1} / ${total}`;
+
+    // progress
+    progress.style.width = ((cur + 1) / total * 100) + '%';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(cur + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                     { e.preventDefault(); goTo(cur - 1); }
+  });
+
+  // Touch swipe
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 50) goTo(cur + (dx < 0 ? 1 : -1));
+  });
+
+  // Init
+  progress.style.width = (1 / total * 100) + '%';
+</script>
+</body>
+</html>
