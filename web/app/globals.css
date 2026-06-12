@@ -3,50 +3,23 @@
 @tailwind utilities;
 
 :root {
-  --bg:     #060d1a;
-  --bg2:    #0d1828;
-  --bg3:    #111f33;
-  --card:   #131f30;
-  --card2:  #1a2840;
-  --border: #1e3048;
-  --border2:#253650;
-  --text-soft:#a7b4cf;
+  --bg:      #f5f0e8;
+  --bg2:     #ede8de;
+  --bg3:     #e3ddd0;
+  --card:    #ede8de;
+  --card2:   #e8e2d5;
+  --border:  #d4ccbf;
+  --border2: #c6bdb0;
+  --text-soft: #7a7268;
 }
 
 * { box-sizing: border-box; }
 
 body {
   background: var(--bg);
-  color: #e2e8f0;
+  color: #2d2520;
   font-family: 'Inter', -apple-system, sans-serif;
   overflow: hidden;
-  position: relative;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: -30%;
-  pointer-events: none;
-  z-index: -2;
-  background:
-    radial-gradient(42% 36% at 6% 8%, rgba(99, 102, 241, 0.24), transparent 70%),
-    radial-gradient(38% 32% at 92% 16%, rgba(59, 130, 246, 0.2), transparent 72%),
-    radial-gradient(56% 52% at 52% 92%, rgba(14, 165, 233, 0.14), transparent 75%),
-    linear-gradient(180deg, #060d1a 0%, #060f20 40%, #050b17 100%);
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 28px 28px;
-  mask-image: radial-gradient(circle at center, black 42%, transparent 92%);
 }
 
 ::-webkit-scrollbar { width: 4px; }
@@ -56,12 +29,12 @@ body::after {
 .message-content p   { margin-bottom: 0.6rem; line-height: 1.75; }
 .message-content ul  { list-style: disc; padding-left: 1.4rem; margin-bottom: 0.6rem; }
 .message-content li  { margin-bottom: 0.2rem; }
-.message-content strong { color: #f1f5f9; }
+.message-content strong { color: #1a1612; }
 .message-content code {
   font-family: 'JetBrains Mono', monospace;
-  background: #0d1828; border: 1px solid #1e3048;
+  background: #e3ddd0; border: 1px solid #d4ccbf;
   border-radius: 4px; padding: 0.1rem 0.35rem;
-  font-size: 0.82em; color: #22d3ee;
+  font-size: 0.82em; color: #5b5bd6;
 }
 
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -77,12 +50,10 @@ body::after {
 .fade-up { animation: fadeUp 0.25s ease; }
 
 .glass-panel {
-  background: linear-gradient(165deg, rgba(21, 34, 62, 0.72), rgba(11, 20, 40, 0.86));
-  border: 1px solid rgba(66, 91, 152, 0.5);
-  box-shadow: 0 16px 44px rgba(1, 8, 22, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(8px);
+  background: #ede8de;
+  border: 1px solid #d4ccbf;
 }
 
 .accent-ring {
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.42), 0 8px 26px rgba(99, 102, 241, 0.22);
+  box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
 }

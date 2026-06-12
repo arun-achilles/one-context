@@ -34,7 +34,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
       <div className="flex justify-center fade-up">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-          style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b" }}>
+          style={{ background: "rgba(180,140,60,0.1)", border: "1px solid rgba(180,140,60,0.3)", color: "#8a5e10" }}>
           <span>💡</span>
           <span>Takeaway saved: {summary}</span>
         </div>
@@ -45,27 +45,21 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   return (
     <div className={`flex gap-3 fade-up ${isUser ? "flex-row-reverse" : ""}`}>
       {/* Avatar */}
-      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 ${
-        isUser
-          ? "bg-indigo-600 text-white"
-          : "text-white"
-      }`}
-        style={isUser ? {} : { background: "linear-gradient(135deg,#6366f1,#06b6d4)" }}>
+      <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 text-white"
+        style={{ background: isUser ? "#6366f1" : "#5a5248" }}>
         {isUser ? "U" : "⬡"}
       </div>
 
       {/* Bubble */}
       <div className={`max-w-[75%] ${isUser ? "items-end" : "items-start"} flex flex-col gap-1`}>
         <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-          isUser
-            ? "rounded-tr-sm text-white"
-            : "rounded-tl-sm"
+          isUser ? "rounded-tr-sm" : "rounded-tl-sm"
         }`}
           style={isUser
-            ? { background: "linear-gradient(150deg,#312e81,#2563eb)", border: "1px solid rgba(99,102,241,0.5)" }
-            : { background: "linear-gradient(160deg, rgba(22,33,59,0.88), rgba(14,22,45,0.92))", border: "1px solid rgba(62,83,137,0.75)", color: "#d8def3" }}>
+            ? { background: "#6366f1", color: "#fff" }
+            : { background: "#ede8de", border: "1px solid #d4ccbf", color: "#2d2520" }}>
           {msg.streaming && !cleanContent ? (
-            <span className="typing-cursor text-slate-400 text-xs">Thinking</span>
+            <span className="typing-cursor text-xs" style={{ color: "#a89e94" }}>Thinking</span>
           ) : (
             <div
               className="message-content"
@@ -87,7 +81,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
               return (
                 <a key={i} href={src.url} target="_blank" rel="noopener noreferrer"
                   className="text-[10px] px-2 py-0.5 rounded-full transition-all flex items-center gap-1"
-                  style={{ background: "rgba(99,102,241,0.08)", color: "#93c5fd", border: "1px solid rgba(99,102,241,0.26)" }}
+                  style={{ background: "rgba(99,102,241,0.08)", color: "#4f46e5", border: "1px solid rgba(99,102,241,0.25)" }}
                   onMouseEnter={e => (e.currentTarget.style.background = "rgba(99,102,241,0.15)")}
                   onMouseLeave={e => (e.currentTarget.style.background = "rgba(99,102,241,0.08)")}>
                   <span>{typeIcon}</span>
@@ -276,7 +270,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             <button
               onClick={() => setSidebarOpen(o => !o)}
               className="ml-auto text-[10px] px-2 py-0.5 rounded-md transition-colors"
-              style={{ color: "#475569", border: "1px solid rgba(62,83,137,0.4)" }}>
+              style={{ color: "#7a7268", border: "1px solid #d4ccbf" }}>
               {sidebarOpen ? "Hide panel" : "Show panel"}
             </button>
           )}
@@ -289,13 +283,13 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
           <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
             <div>
               <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
-                style={{ background: "linear-gradient(135deg,rgba(99,102,241,0.15),rgba(6,182,212,0.15))", border: "1px solid rgba(99,102,241,0.2)" }}>
+                style={{ background: "#ede8de", border: "1px solid #d4ccbf" }}>
                 {featureName ? "🗂️" : "💬"}
               </div>
-              <h2 className="text-xl font-bold text-white mb-2">
+              <h2 className="text-xl font-bold mb-2" style={{ color: "#2d2520" }}>
                 {featureName ? `Working on: ${featureName}` : "General Chat"}
               </h2>
-              <p className="text-sm max-w-sm" style={{ color: "#64748b" }}>
+              <p className="text-sm max-w-sm" style={{ color: "#7a7268" }}>
                 {featureName
                   ? "Ask about existing capabilities, draft stories, or explore the codebase for this feature."
                   : "Ask anything about your Jira, Confluence, or codebase knowledge."}
@@ -305,9 +299,9 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               {SUGGESTIONS.map(s => (
                 <button key={s} onClick={() => send(s)}
                   className="text-xs text-left px-3.5 py-2.5 rounded-xl transition-all"
-                  style={{ background: "rgba(20,31,56,0.88)", border: "1px solid rgba(62,83,137,0.75)", color: "#94a3b8" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#a5b4fc"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(62,83,137,0.75)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  style={{ background: "#ede8de", border: "1px solid #d4ccbf", color: "#5a5248" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#4f46e5"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#d4ccbf"; e.currentTarget.style.color = "#5a5248"; }}>
                   {s}
                 </button>
               ))}
@@ -322,7 +316,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {/* Input */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2">
         <div className="flex items-end gap-2 p-2 rounded-2xl transition-all"
-          style={{ background: "linear-gradient(170deg, rgba(22,33,59,0.92), rgba(13,21,43,0.96))", border: "1px solid rgba(64,86,141,0.78)", boxShadow: "0 14px 36px rgba(1,9,24,0.32)" }}>
+          style={{ background: "#ede8de", border: "1px solid #d4ccbf" }}>
           <textarea
             ref={inputRef}
             value={input}
@@ -331,8 +325,8 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             placeholder={featureName ? `Ask about ${featureName}…` : "Ask anything…"}
             rows={1}
             disabled={loading}
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-600 outline-none resize-none px-2 py-1.5 max-h-32"
-            style={{ caretColor: "#6366f1" }}
+            className="flex-1 bg-transparent text-sm outline-none resize-none px-2 py-1.5 max-h-32"
+            style={{ caretColor: "#6366f1", color: "#2d2520" }}
             onInput={e => {
               const t = e.currentTarget;
               t.style.height = "auto";
@@ -346,25 +340,25 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               title="Save takeaway"
               className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 text-sm"
               style={{
-                background: "rgba(245,158,11,0.1)",
-                border: "1px solid rgba(245,158,11,0.2)",
-                color: "#f59e0b"
+                background: "rgba(180,140,60,0.1)",
+                border: "1px solid rgba(180,140,60,0.3)",
+                color: "#8a5e10"
               }}>
-              💾
+              💡
             </button>
           )}
           <button
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
-            style={{ background: input.trim() && !loading ? "linear-gradient(135deg,#6366f1,#4f46e5)" : "var(--bg3)" }}>
+            style={{ background: input.trim() && !loading ? "#6366f1" : "var(--bg3)" }}>
             {loading
               ? <span className="w-3 h-3 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
               : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             }
           </button>
         </div>
-        <p className="text-[10px] text-center mt-1.5" style={{ color: "#334155" }}>
+        <p className="text-[10px] text-center mt-1.5" style={{ color: "#a89e94" }}>
           Enter to send · Shift+Enter for new line
         </p>
       </div>
@@ -373,10 +367,10 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {/* Right sidebar — takeaways + artefacts (feature sessions only) */}
       {featureId && sidebarOpen && (
         <div className="flex-shrink-0 w-72 border-l flex flex-col overflow-y-auto"
-          style={{ borderColor: "rgba(62,83,137,0.4)", background: "rgba(10,17,35,0.7)" }}>
+          style={{ borderColor: "#d4ccbf", background: "#ede8de" }}>
 
           {/* Takeaways */}
-          <div className="p-4 border-b" style={{ borderColor: "rgba(62,83,137,0.3)" }}>
+          <div className="p-4 border-b" style={{ borderColor: "#d4ccbf" }}>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm">💡</span>
               <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
@@ -396,18 +390,18 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
                 {takeaways.map(t => (
                   <div key={t.id}
                     className="rounded-lg cursor-pointer transition-all"
-                    style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
+                    style={{ background: "rgba(180,140,60,0.08)", border: "1px solid rgba(180,140,60,0.25)" }}
                     onClick={() => setExpandedTakeaway(expandedTakeaway === t.id ? null : t.id)}>
                     <div className="flex items-start gap-2 px-3 py-2">
-                      <span className="text-xs mt-0.5 flex-shrink-0" style={{ color: "#f59e0b" }}>💡</span>
+                      <span className="text-xs mt-0.5 flex-shrink-0">💡</span>
                       <p className={`text-xs leading-relaxed ${expandedTakeaway === t.id ? "" : "line-clamp-2"}`}
-                        style={{ color: "#d1a832" }}>
+                        style={{ color: "#6b4e10" }}>
                         {t.title || t.link_id}
                       </p>
                     </div>
                     {expandedTakeaway === t.id && (
                       <div className="px-3 pb-2">
-                        <span className="text-[10px]" style={{ color: "#475569" }}>
+                        <span className="text-[10px]" style={{ color: "#a89e94" }}>
                           {new Date(t.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                         </span>
                       </div>
@@ -431,7 +425,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               </span>
             </div>
             {artefacts.length === 0 ? (
-              <p className="text-[11px] italic" style={{ color: "#334155" }}>
+              <p className="text-[11px] italic" style={{ color: "#a89e94" }}>
                 No artefacts linked yet.
               </p>
             ) : (
@@ -440,7 +434,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
                   const meta = ARTEFACT_META[a.link_type] ?? { icon: "🔗", color: "#94a3b8" };
                   return (
                     <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-                      style={{ background: "rgba(20,31,56,0.6)", border: "1px solid rgba(62,83,137,0.4)" }}>
+                      style={{ background: "#f0ece3", border: "1px solid #d4ccbf" }}>
                       <span className="text-xs flex-shrink-0">{meta.icon}</span>
                       {a.link_url ? (
                         <a href={a.link_url} target="_blank" rel="noopener noreferrer"
