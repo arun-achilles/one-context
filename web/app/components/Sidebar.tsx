@@ -50,7 +50,7 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
         <div className="px-4 py-4 border-b flex items-center gap-2.5"
           style={{ borderColor: "#e5e5e5" }}>
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold"
-            style={{ background: "#F04E2B", color: "#ffffff" }}>
+            style={{ background: "#003d4f", color: "#ffffff" }}>
             ⬡
           </div>
           <div>
@@ -84,9 +84,9 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
           </span>
           <button onClick={() => setShowModal(true)}
             className="text-xs px-2 py-0.5 rounded-md font-semibold transition-all"
-            style={{ background: "rgba(240,78,43,0.08)", color: "#F04E2B", border: "1px solid rgba(240,78,43,0.25)" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(240,78,43,0.15)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(240,78,43,0.08)")}>
+            style={{ background: "rgba(0,61,79,0.08)", color: "#003d4f", border: "1px solid rgba(0,61,79,0.25)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,61,79,0.15)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,61,79,0.08)")}>
             + New
           </button>
         </div>
@@ -117,12 +117,12 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono" style={{ color: "#F04E2B" }}>{f.id}</span>
+                <span className="text-[10px] font-mono" style={{ color: "#003d4f" }}>{f.id}</span>
                 {f.session_count != null && f.session_count > 0 && (
                   <span className="text-[10px]" style={{ color: "#999999" }}>{f.session_count} session{f.session_count !== 1 ? "s" : ""}</span>
                 )}
                 {author.trim() && f.created_by?.toLowerCase() === author.toLowerCase() && (
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 inline-block" style={{ background: "#F04E2B" }} />
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 inline-block" style={{ background: "#003d4f" }} />
                 )}
               </div>
             </button>
@@ -150,8 +150,8 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
                   value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder="e.g. Gift Cards, QR Scan Reliability"
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
-                  style={{ background: "#f5f5f5", border: "1px solid #e5e5e5", color: "#1a1a1a", caretColor: "#F04E2B" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "#F04E2B")}
+                  style={{ background: "#ffffff", border: "1px solid #e5e5e5", color: "#1a1a1a", caretColor: "#003d4f" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "#003d4f")}
                   onBlur={e => (e.currentTarget.style.borderColor = "#e5e5e5")}
                   autoFocus required
                 />
@@ -165,8 +165,8 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
                   placeholder="What problem does this feature solve?"
                   rows={2}
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none transition-all"
-                  style={{ background: "#f5f5f5", border: "1px solid #e5e5e5", color: "#1a1a1a", caretColor: "#F04E2B" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "#F04E2B")}
+                  style={{ background: "#ffffff", border: "1px solid #e5e5e5", color: "#1a1a1a", caretColor: "#003d4f" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "#003d4f")}
                   onBlur={e => (e.currentTarget.style.borderColor = "#e5e5e5")}
                 />
               </div>
@@ -178,8 +178,8 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
                   value={form.created_by} onChange={e => setForm(p => ({ ...p, created_by: e.target.value }))}
                   placeholder="Your name"
                   className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all"
-                  style={{ background: "#f5f5f5", border: "1px solid #e5e5e5", color: "#1a1a1a", caretColor: "#F04E2B" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "#F04E2B")}
+                  style={{ background: "#ffffff", border: "1px solid #e5e5e5", color: "#1a1a1a", caretColor: "#003d4f" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "#003d4f")}
                   onBlur={e => (e.currentTarget.style.borderColor = "#e5e5e5")}
                 />
               </div>
@@ -191,7 +191,7 @@ export default function Sidebar({ activeConvId, onSelectFeature, onGeneralChat, 
                 </button>
                 <button type="submit" disabled={saving || !form.name.trim()}
                   className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
-                  style={{ background: "#F04E2B", color: "#ffffff" }}>
+                  style={{ background: "#003d4f", color: "#ffffff" }}>
                   {saving ? "Creating…" : "Create Feature"}
                 </button>
               </div>
