@@ -1,0 +1,41 @@
+project: ecom-demo
+
+sources:
+  jira:
+    boards: [1234]
+    custom_fields:
+      epic_link: customfield_10014
+      acceptance_criteria: customfield_10016
+
+  confluence:
+    spaces: [ECOM]
+    exclude_labels: [draft, archived]
+
+  code:
+    repos:
+      - path: /Users/mathipriyashankar/Documents/one-context/ecom-clean
+    summarize_at: module
+    include:
+      - "**/*.cs"
+      - "**/*.csproj"
+      - "**/*.js"
+      - "**/*.jsx"
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.md"
+      - "**/*.json"
+    exclude:
+      - "**/node_modules/**"
+      - "**/.venv/**"
+      - "**/__pycache__/**"
+      - "**/*.min.js"
+    git_history_months: 12
+
+hygiene:
+  staleness_months: 12
+  min_quality_auto: 4
+  min_quality_review: 2
+
+sync:
+  schedule: "0 2 * * *"
+  webhook_port: 8001

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "+tAr7b33Sig=",
+  "success": true,
+  "projectFilePath": "/Users/mathipriyashankar/Documents/one-context/ecom-clean/backend-dotnet/src/Ecom.Application/Ecom.Application.csproj",
+  "expectedPackageFiles": [
+    "/Users/mathipriyashankar/.nuget/packages/microsoft.netcore.app.ref/8.0.27/microsoft.netcore.app.ref.8.0.27.nupkg.sha512",
+    "/Users/mathipriyashankar/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.27/microsoft.aspnetcore.app.ref.8.0.27.nupkg.sha512"
+  ],
+  "logs": []
+}

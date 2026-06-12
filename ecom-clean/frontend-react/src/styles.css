@@ -1,0 +1,152 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(120deg, #f8f6ef 0%, #eef9ff 100%);
+  color: #1f2937;
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.header {
+  background: #0f766e;
+  color: white;
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.header h1 {
+  margin: 0;
+}
+
+.header p {
+  margin: 8px 0 0;
+  opacity: 0.9;
+}
+
+.error {
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+}
+
+.panel {
+  background: white;
+  border: 1px solid #dbe4ee;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.full-width {
+  grid-column: 1 / span 2;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card h3 {
+  margin: 0;
+}
+
+.card p {
+  margin: 0;
+  color: #4b5563;
+  min-height: 40px;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  color: #0f766e;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  background: #0f766e;
+  color: white;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #115e59;
+}
+
+button.danger {
+  background: #ef4444;
+}
+
+button.danger:hover {
+  background: #dc2626;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dashed #e5e7eb;
+  padding: 10px 0;
+}
+
+.row small {
+  color: #6b7280;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.total {
+  font-weight: 700;
+  margin-top: 10px;
+}
+
+.empty {
+  color: #6b7280;
+}
+
+.order-amount {
+  margin-left: 8px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+}
