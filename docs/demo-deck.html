@@ -197,67 +197,90 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
 <!-- ════════════════════════════════════════════════
      SLIDE 1  PROBLEM + COST
 ════════════════════════════════════════════════ -->
-<section class="slide">
-  <div class="sn">01 / Problem</div>
-  <div class="bar"></div>
-  <div class="tag">Background · Current Challenges</div>
-  <h2>Software development teams <span class="y">lose context</span><br/>
-  between every tool, role, and sprint.</h2>
-
-  <div class="stats">
-    <div class="stat">
-      <div class="n">30%</div>
-      <div class="l">of sprint time re-establishing context</div>
+<section class="slide split" style="gap:6vw;">
+  <div class="sl">
+    <div class="sn">01 / Problem</div>
+    <div class="bar"></div>
+    <div class="tag">Background · Current Challenges</div>
+    <h2>Understanding a feature<br/>requires <span class="y">four separate tools</span><br/>and a lot of luck.</h2>
+    <p class="lead" style="margin-top:1.2rem;">
+      Engineers spend time <strong class="w">searching for information</strong><br/>
+      instead of delivering value.
+    </p>
+  </div>
+  <div class="sr">
+    <div style="margin-bottom:1.4rem;">
+      <div style="font-size:.7rem;font-weight:700;color:var(--dim);letter-spacing:.12em;text-transform:uppercase;margin-bottom:.9rem;">To understand one feature, a dev must:</div>
+      <div style="display:flex;flex-direction:column;gap:.55rem;">
+        <div style="display:flex;align-items:center;gap:.75rem;font-size:.85rem;color:var(--mid);">
+          <span style="width:22px;height:22px;border-radius:50%;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.3);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--y);flex-shrink:0;">1</span>
+          Search Jira for requirements and acceptance criteria
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;font-size:.85rem;color:var(--mid);">
+          <span style="width:22px;height:22px;border-radius:50%;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.3);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--y);flex-shrink:0;">2</span>
+          Read Confluence for documentation and decisions
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;font-size:.85rem;color:var(--mid);">
+          <span style="width:22px;height:22px;border-radius:50%;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.3);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--y);flex-shrink:0;">3</span>
+          Find the right GitHub repository and branch
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;font-size:.85rem;color:var(--mid);">
+          <span style="width:22px;height:22px;border-radius:50%;background:rgba(0,188,212,.12);border:1px solid rgba(0,188,212,.3);display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:var(--y);flex-shrink:0;">4</span>
+          Look through pull requests and code changes
+        </div>
+      </div>
     </div>
-    <div class="stat">
-      <div class="n">5+</div>
-      <div class="l">tools a developer context-switches daily</div>
-    </div>
-    <div class="stat">
-      <div class="n">0</div>
-      <div class="l">shared memory across roles after sprint ends</div>
+    <div style="border-top:1px solid var(--b1);padding-top:1.1rem;display:flex;flex-direction:column;gap:.5rem;">
+      <div style="font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.6rem;">
+        <span style="color:var(--y);">→</span> Excessive context switching across every role
+      </div>
+      <div style="font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.6rem;">
+        <span style="color:var(--y);">→</span> Slow, expensive onboarding for new team members
+      </div>
+      <div style="font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.6rem;">
+        <span style="color:var(--y);">→</span> Organisational knowledge lost between sprints
+      </div>
+      <div style="font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:.6rem;">
+        <span style="color:var(--y);">→</span> Reduced developer productivity on every team
+      </div>
     </div>
   </div>
-
-  <ul class="bl" style="margin-top:1.6rem;">
-    <li><strong>PO ↔ Tech Lead gap:</strong> stories drafted without knowing what's already built</li>
-    <li><strong>Knowledge evaporates:</strong> every decision lives in someone's head, not in a tool</li>
-    <li><strong>Onboarding tax:</strong> every new session, every new joiner starts from scratch</li>
-    <li><strong>Tool silos:</strong> Jira, Confluence, GitHub, Slack — none of them talk to each other</li>
-  </ul>
 </section>
 
 <!-- ════════════════════════════════════════════════
      SLIDE 2  THE CORE IDEA
 ════════════════════════════════════════════════ -->
 <section class="slide">
-  <div class="sn">02 / Core Idea</div>
+  <div class="sn">02 / Solution</div>
   <div class="bar"></div>
   <div class="tag">Our Solution</div>
-  <h2>A <span class="y">shared intelligence layer</span><br/>
-  that accumulates context across every tool and role.</h2>
+  <h2>One Context — a <span class="y">unified engineering<br/>context assistant</span> for delivery teams.</h2>
 
-  <p class="lead">
-    One Context sits across your tools. It ingests, understands, and remembers —
-    so every team member always has the full picture.
-    <strong class="w"> Jira and Confluence are the defaults. Not the limits.</strong>
+  <p class="lead" style="max-width:62ch;">
+    Connect GitHub, Jira, and Confluence into a single AI-powered experience.
+    Instead of navigating four systems, ask one question in natural language
+    and get a <strong class="w">contextual, source-backed answer.</strong>
+  </p>
+
+  <p class="lead" style="margin-top:.6rem;font-size:.95rem;">
+    The goal is simple: <strong class="w">make engineering knowledge instantly accessible.</strong>
   </p>
 
   <div class="g3" style="margin-top:1.8rem;">
     <div class="card hl">
       <div class="ic">🔍</div>
-      <h3>Discover</h3>
-      <p>Ask what already exists before building it. Grounded in real Jira, Confluence, and codebase data.</p>
+      <h3>Ask anything</h3>
+      <p>Query across Jira, Confluence, GitHub, and your codebase in one conversation. Sources cited inline.</p>
     </div>
     <div class="card hl">
       <div class="ic">✍️</div>
-      <h3>Draft &amp; Act</h3>
-      <p>Create stories, update tickets, write Confluence docs — from chat. Role-aware. Confirm before it ships.</p>
+      <h3>Take action</h3>
+      <p>Create stories, update tickets, write docs — from chat. Role-aware drafting. Confirm before it ships.</p>
     </div>
     <div class="card hl">
       <div class="ic">💡</div>
-      <h3>Takeaways</h3>
-      <p>Decisions saved once. Auto-injected into every future session for this feature — for any role.</p>
+      <h3>Never lose context</h3>
+      <p>Decisions saved once, surfaced automatically — across every role, every sprint, every session.</p>
     </div>
   </div>
 </section>
