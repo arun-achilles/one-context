@@ -77,12 +77,12 @@ function WelcomeScreen({ onGeneralChat }: { onGeneralChat: () => void }) {
     <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
       {/* Logo */}
       <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mb-2"
-        style={{ background: "#ffe566", color: "#0a0a0a" }}>
+        style={{ background: "#F04E2B", color: "#ffffff" }}>
         ⬡
       </div>
       <div>
-        <h1 className="text-2xl font-bold mb-2" style={{ color: "#ffffff" }}>One Context</h1>
-        <p className="text-sm max-w-md" style={{ color: "#888888" }}>
+        <h1 className="text-2xl font-bold mb-2" style={{ color: "#1a1a1a" }}>One Context</h1>
+        <p className="text-sm max-w-md" style={{ color: "#6b6b6b" }}>
           Your team's shared intelligence layer. Ask questions across Jira, Confluence, and your codebase — or open a Feature workspace to collaborate across roles.
         </p>
       </div>
@@ -91,13 +91,13 @@ function WelcomeScreen({ onGeneralChat }: { onGeneralChat: () => void }) {
       <div className="flex flex-col gap-3 w-full max-w-sm">
         <button onClick={onGeneralChat}
           className="flex items-center gap-3 px-5 py-3.5 rounded-xl text-sm font-semibold transition-all"
-          style={{ background: "#ffe566", color: "#0a0a0a" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "#e6c800")}
-          onMouseLeave={e => (e.currentTarget.style.background = "#ffe566")}>
+          style={{ background: "#F04E2B", color: "#ffffff" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "#c73d1e")}
+          onMouseLeave={e => (e.currentTarget.style.background = "#F04E2B")}>
           <span>💬</span>
           Start a general chat
         </button>
-        <div className="text-xs" style={{ color: "#555555" }}>or select a feature in the sidebar</div>
+        <div className="text-xs" style={{ color: "#999999" }}>or select a feature in the sidebar</div>
       </div>
 
       {/* Hint cards */}
@@ -108,10 +108,10 @@ function WelcomeScreen({ onGeneralChat }: { onGeneralChat: () => void }) {
           { icon: "💡", label: "Takeaways", desc: "Save team decisions that surface automatically" },
         ].map(h => (
           <div key={h.label} className="p-4 rounded-xl text-left"
-            style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
+            style={{ background: "#f2f2f2", border: "1px solid #e5e5e5" }}>
             <div className="text-lg mb-2">{h.icon}</div>
-            <div className="text-sm font-semibold mb-1" style={{ color: "#ffffff" }}>{h.label}</div>
-            <div className="text-xs" style={{ color: "#888888" }}>{h.desc}</div>
+            <div className="text-sm font-semibold mb-1" style={{ color: "#1a1a1a" }}>{h.label}</div>
+            <div className="text-xs" style={{ color: "#6b6b6b" }}>{h.desc}</div>
           </div>
         ))}
       </div>
