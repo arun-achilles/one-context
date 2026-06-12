@@ -197,67 +197,69 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
 <!-- ════════════════════════════════════════════════
      SLIDE 1  PROBLEM + COST
 ════════════════════════════════════════════════ -->
-<section class="slide">
-  <div class="sn">01 / Problem</div>
-  <div class="bar"></div>
-  <div class="tag">Background · Current Challenges</div>
-  <h2>Software development teams <span class="y">lose context</span><br/>
-  between every tool, role, and sprint.</h2>
-
-  <div class="stats">
-    <div class="stat">
-      <div class="n">30%</div>
-      <div class="l">of sprint time re-establishing context</div>
+<section class="slide split" style="gap:5vw;">
+  <div class="sl">
+    <div class="sn">01 / Problem</div>
+    <div class="bar"></div>
+    <div class="tag">Background · Current Challenges</div>
+    <h2>Teams work in <span class="y">silos.</span><br/>Context is lost<br/>at every handoff.</h2>
+    <p class="lead" style="margin-top:1.2rem;">
+      Every role has its own tools, its own mental model of the feature.
+      Context must be manually re-shared at every step of the SDLC.<br/><br/>
+      <strong class="w">There is no single spine connecting them.</strong>
+    </p>
+  </div>
+  <div class="sr">
+    <div style="display:flex;flex-direction:column;gap:.7rem;">
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:.9rem 1.1rem;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.3rem;">🔄 Constant context propagation</div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.6;">Every handoff — PO to Dev, Dev to QA, onboarding a new joiner — requires manually re-sharing context that already exists somewhere in a tool.</div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:.9rem 1.1rem;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.3rem;">🧩 Fragmented tools, no integration</div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.6;">Requirements, decisions, code, and history live in separate tools. Each is a silo — none aware of the others. The team is the integration layer.</div>
+      </div>
+      <div style="background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:.9rem 1.1rem;">
+        <div style="font-size:.8rem;font-weight:700;color:var(--text);margin-bottom:.3rem;">📉 Knowledge evaporates</div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.6;">When a sprint ends or a person leaves, context goes with them. The next person or role starts from zero — every single time.</div>
+      </div>
     </div>
-    <div class="stat">
-      <div class="n">5+</div>
-      <div class="l">tools a developer context-switches daily</div>
-    </div>
-    <div class="stat">
-      <div class="n">0</div>
-      <div class="l">shared memory across roles after sprint ends</div>
+    <div style="margin-top:1rem;font-size:.82rem;font-weight:600;color:var(--y);border-top:1px solid var(--b1);padding-top:.85rem;">
+      Engineers spend time searching for context instead of delivering value.
     </div>
   </div>
-
-  <ul class="bl" style="margin-top:1.6rem;">
-    <li><strong>PO ↔ Tech Lead gap:</strong> stories drafted without knowing what's already built</li>
-    <li><strong>Knowledge evaporates:</strong> every decision lives in someone's head, not in a tool</li>
-    <li><strong>Onboarding tax:</strong> every new session, every new joiner starts from scratch</li>
-    <li><strong>Tool silos:</strong> Jira, Confluence, GitHub, Slack — none of them talk to each other</li>
-  </ul>
 </section>
 
 <!-- ════════════════════════════════════════════════
      SLIDE 2  THE CORE IDEA
 ════════════════════════════════════════════════ -->
 <section class="slide">
-  <div class="sn">02 / Core Idea</div>
+  <div class="sn">02 / Solution</div>
   <div class="bar"></div>
   <div class="tag">Our Solution</div>
-  <h2>A <span class="y">shared intelligence layer</span><br/>
-  that accumulates context across every tool and role.</h2>
+  <h2>One Context is the <span class="y">spine</span><br/>that connects your tools,<br/>your team, and your SDLC.</h2>
 
-  <p class="lead">
-    One Context sits across your tools. It ingests, understands, and remembers —
-    so every team member always has the full picture.
-    <strong class="w"> Jira and Confluence are the defaults. Not the limits.</strong>
+  <p class="lead" style="max-width:64ch;">
+    An AI intelligence layer that keeps track of context across every team member and every tool —
+    bridging the gaps at each stage of delivery.
+    <strong class="w"> Not a chatbot. Not a search engine. A living integration layer.</strong>
   </p>
 
   <div class="g3" style="margin-top:1.8rem;">
     <div class="card hl">
       <div class="ic">🔍</div>
-      <h3>Discover</h3>
-      <p>Ask what already exists before building it. Grounded in real Jira, Confluence, and codebase data.</p>
+      <h3>Ask anything</h3>
+      <p>Query across all connected tools in one conversation. Contextual, source-backed answers — instantly accessible to any role.</p>
     </div>
     <div class="card hl">
       <div class="ic">✍️</div>
-      <h3>Draft &amp; Act</h3>
-      <p>Create stories, update tickets, write Confluence docs — from chat. Role-aware. Confirm before it ships.</p>
+      <h3>Take action</h3>
+      <p>Create stories, update tickets, write docs — from chat. Role-aware drafting. Any tool. Confirm before it ships.</p>
     </div>
     <div class="card hl">
       <div class="ic">💡</div>
-      <h3>Takeaways</h3>
-      <p>Decisions saved once. Auto-injected into every future session for this feature — for any role.</p>
+      <h3>Persist context</h3>
+      <p>Decisions saved once, surfaced automatically — across every role, every sprint, every handoff. Context never lost again.</p>
     </div>
   </div>
 </section>
