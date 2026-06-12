@@ -8,17 +8,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:     #ffffff;
-  --s1:     #f8f8f8;
-  --s2:     #f2f2f2;
-  --b1:     #e5e5e5;
-  --b2:     #d4d4d4;
-  --text:   #1a1a1a;
-  --mid:    #3a3a3a;
-  --muted:  #6b6b6b;
-  --dim:    #999999;
-  --y:      #F04E2B;   /* Thoughtworks coral */
-  --y2:     #c73d1e;   /* hover */
+  --bg:     #0f1117;
+  --s1:     #171b25;
+  --s2:     #1e2330;
+  --b1:     #2a3040;
+  --b2:     #363d50;
+  --text:   #f0f2f5;
+  --mid:    #c8cdd8;
+  --muted:  #8a92a6;
+  --dim:    #4a5268;
+  --y:      #00bcd4;   /* light teal — readable on dark */
+  --y2:     #0097ab;
 }
 
 html, body { height: 100%; background: var(--bg); color: var(--text);
@@ -55,7 +55,7 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
   line-height: 1.7; max-width: 58ch; margin-top: 1rem; }
 
 .y { color: var(--y); }
-.w { color: #1a1a1a; }
+.w { color: #ffffff; }
 
 /* ─── divider ───────────────────────────────────── */
 .bar { width: 44px; height: 3px; background: var(--y);
@@ -68,7 +68,7 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
   font-size: clamp(.88rem, 1.35vw, 1.02rem); line-height: 1.6; color: var(--mid); }
 .bl li::before { content: ''; flex-shrink: 0; width: 6px; height: 6px;
   border-radius: 50%; background: var(--y); margin-top: .52em; }
-.bl li strong { color: #1a1a1a; font-weight: 700; }
+.bl li strong { color: #ffffff; font-weight: 700; }
 
 /* ─── stat row ──────────────────────────────────── */
 .stats { display: flex; gap: 3.5rem; margin-top: 2rem; }
@@ -84,9 +84,9 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
 /* ─── card ──────────────────────────────────────── */
 .card { background: var(--s2); border: 1px solid var(--b1);
   border-radius: 12px; padding: 1.3rem 1.5rem; }
-.card.hl { border-color: rgba(240,78,43,.25);
-  background: rgba(240,78,43,.04); }
-.card h3 { font-size: .9rem; font-weight: 700; color: #1a1a1a; margin-bottom: .4rem; }
+.card.hl { border-color: rgba(0,188,212,.3);
+  background: rgba(0,188,212,.05); }
+.card h3 { font-size: .9rem; font-weight: 700; color: #f0f2f5; margin-bottom: .4rem; }
 .card p  { font-size: .8rem; color: var(--muted); line-height: 1.62; }
 .card .ic { font-size: 1.5rem; margin-bottom: .65rem; }
 
@@ -96,36 +96,36 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
 .fstep { background: var(--s2); border: 1px solid var(--b1);
   border-radius: 8px; padding: .5rem 1rem;
   font-size: .8rem; font-weight: 600; color: var(--muted); white-space: nowrap; }
-.fstep.y { border-color: rgba(240,78,43,.3);
-  background: rgba(240,78,43,.06); color: var(--y); }
+.fstep.y { border-color: rgba(0,188,212,.3);
+  background: rgba(0,188,212,.07); color: var(--y); }
 .arr { color: var(--dim); font-size: .85rem; }
 
 /* ─── role pills ────────────────────────────────── */
 .roles { display: flex; gap: .55rem; flex-wrap: wrap; margin-top: 1.5rem; }
 .role { font-size: .76rem; font-weight: 700; padding: .38rem 1rem;
   border-radius: 100px; border: 1px solid var(--b1); color: var(--muted); }
-.role.po  { border-color:rgba(240,78,43,.35); color:var(--y); background:rgba(240,78,43,.06); }
-.role.tl  { border-color:#d4d4d4; color:#1a1a1a; background:#f5f5f5; }
-.role.dev { border-color:#d4d4d4; color:#6b6b6b; background:#f5f5f5; }
-.role.ba  { border-color:rgba(240,78,43,.35); color:var(--y); background:rgba(240,78,43,.06); }
-.role.qa  { border-color:#d4d4d4; color:#1a1a1a; background:#f5f5f5; }
+.role.po  { border-color:rgba(0,188,212,.4); color:var(--y); background:rgba(0,188,212,.07); }
+.role.tl  { border-color:#2a3040; color:#c8cdd8; background:#1e2330; }
+.role.dev { border-color:#2a3040; color:#8a92a6; background:#1e2330; }
+.role.ba  { border-color:rgba(0,188,212,.4); color:var(--y); background:rgba(0,188,212,.07); }
+.role.qa  { border-color:#2a3040; color:#c8cdd8; background:#1e2330; }
 
 /* ─── convo snippet ─────────────────────────────── */
 .convo { background: var(--s2); border: 1px solid var(--b1);
   border-radius: 10px; padding: 1.1rem 1.4rem;
   font-size: .82rem; line-height: 1.75; margin-top: 1.5rem; }
-.cu { color: #3a3a3a; }
+.cu { color: #c8cdd8; }
 .cu span { color: var(--y); font-weight: 700; }
 .ca { color: var(--muted); margin-top: .4rem; }
-.ca span { color: #16a34a; font-weight: 700; }
+.ca span { color: #4ade80; font-weight: 700; }
 
 /* ─── tool pills ────────────────────────────────── */
 .tools { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .9rem; }
 .tool { font-size: .73rem; font-weight: 600; padding: .3rem .75rem;
   border-radius: 6px; background: var(--s2); border: 1px solid var(--b1);
   color: var(--muted); }
-.tool.y { border-color:rgba(240,78,43,.25);color:var(--y);
-  background:rgba(240,78,43,.06); }
+.tool.y { border-color:rgba(0,188,212,.3);color:var(--y);
+  background:rgba(0,188,212,.07); }
 
 /* ─── split ─────────────────────────────────────── */
 .split { flex-direction: row; gap: 7vw; align-items: center; }
@@ -138,7 +138,7 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
   border-radius: 16px; margin-bottom: 1.8rem; font-weight: 900; }
 
 /* ─── cta box ───────────────────────────────────── */
-.cta { border: 1px solid rgba(240,78,43,.3); background: rgba(240,78,43,.05);
+.cta { border: 1px solid rgba(0,188,212,.3); background: rgba(0,188,212,.06);
   border-radius: 12px; padding: 1.3rem 2rem; display: inline-block; margin-top: 2rem; }
 .cta p { color: var(--muted); font-size: .86rem; margin-top: .35rem; }
 
@@ -201,7 +201,7 @@ h2 { font-size: clamp(1.9rem, 3.6vw, 3rem); font-weight: 800;
   <div class="sn">01 / Problem</div>
   <div class="bar"></div>
   <div class="tag">Background · Current Challenges</div>
-  <h2>Delivery teams <span class="y">lose context</span><br/>
+  <h2>Software development teams <span class="y">lose context</span><br/>
   between every tool, role, and sprint.</h2>
 
   <div class="stats">
