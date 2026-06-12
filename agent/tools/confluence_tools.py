@@ -16,6 +16,11 @@ def _client() -> Confluence:
     )
 
 
+def _base_url() -> str:
+    """Return the Confluence base URL without a trailing /wiki suffix."""
+    return os.environ["CONFLUENCE_URL"].rstrip("/").removesuffix("/wiki")
+
+
 def search_confluence(query: str, space_key: str | None = None, max_results: int = 5) -> list[dict]:
     """Full-text search across Confluence pages."""
     space = space_key or os.environ.get("CONFLUENCE_SPACE_KEY", "CL")
@@ -26,7 +31,7 @@ def search_confluence(query: str, space_key: str | None = None, max_results: int
     for r in results.get("results", []):
         pages.append({
             "title": r.get("title", ""),
-            "url": os.environ["CONFLUENCE_URL"] + r.get("url", ""),
+            "url": _base_url() + r.get("url", ""),
             "excerpt": r.get("excerpt", ""),
         })
     return pages
@@ -67,7 +72,7 @@ def update_confluence_page(
 
     return {
         "page_id": page_id,
-        "url": f"{os.environ['CONFLUENCE_URL']}/wiki/spaces/{space}/pages/{page_id}",
+        "url": f"{_base_url()}/wiki/spaces/{space}/pages/{page_id}",
         "version": current_version + 1,
     }
 
@@ -103,5 +108,5 @@ def create_confluence_page(
     page_id = result.get("id", "")
     return {
         "page_id": page_id,
-        "url": f"{os.environ['CONFLUENCE_URL']}/wiki/spaces/{space}/pages/{page_id}",
+        "url": f"{_base_url()}/wiki/spaces/{space}/pages/{page_id}",
     }
