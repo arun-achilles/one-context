@@ -28,6 +28,13 @@ def act_node(state: AgentState) -> AgentState:
     if action_type == "link_artefact":
         return _do_link_artefact(state, pending_action)
 
+    if action_type == "update_jira":
+        return _do_jira_update(state, pending_action)
+    if action_type == "create_subtasks":
+        return _do_create_subtasks(state, pending_action)
+    if action_type == "create_confluence":
+        return _do_confluence_create(state, pending_action)
+
     return {**state, "answer": f"Unknown action type: {action_type}"}
 
 
@@ -146,6 +153,82 @@ def _do_link_artefact(state: AgentState, action: dict) -> AgentState:
         )
     except Exception as e:
         answer = f"Failed to link artefact: {e}"
+    return {**state, "answer": answer, "citations": [], "pending_action": None}
+
+
+def _do_jira_update(state: AgentState, action: dict) -> AgentState:
+    from agent.tools.jira_tools import update_jira_issue
+    try:
+        result = update_jira_issue(
+            key=action["key"],
+            update_summary=action["content"] if action.get("action") == "update_summary" else None,
+            append_section={"heading": action["heading"], "content": action["content"]} if action.get("action") == "append_section" else None,
+            add_comment=action["content"] if action.get("action") == "add_comment" else None,
+        )
+        answer = (
+            f"✓ Updated **{result['key']}** — {', '.join(result['updated_fields'])}.\n\n"
+            f"[Open in Jira]({result['url']})"
+        )
+        feature_id = state.get("feature_id")
+        if feature_id:
+            try:
+                from agent.tools.feature_tools import link_artefact
+                link_artefact(feature_id, "jira_story", result["key"], result["url"], result["key"])
+            except Exception:
+                pass
+    except Exception as e:
+        answer = f"Failed to update Jira issue: {e}"
+    return {**state, "answer": answer, "citations": [], "pending_action": None}
+
+
+def _do_create_subtasks(state: AgentState, action: dict) -> AgentState:
+    from agent.tools.jira_tools import create_jira_subtask
+    created = []
+    errors = []
+    feature_id = state.get("feature_id")
+    for sub in action.get("subtasks", []):
+        try:
+            r = create_jira_subtask(action["parent_key"], sub["title"], sub.get("description", ""))
+            created.append(r)
+            if feature_id:
+                try:
+                    from agent.tools.feature_tools import link_artefact
+                    link_artefact(feature_id, "jira_task", r["key"], r["url"], sub["title"])
+                except Exception:
+                    pass
+        except Exception as e:
+            errors.append(f"{sub['title']}: {e}")
+    if created:
+        lines = "\n".join(f"- [{r['key']}]({r['url']})" for r in created)
+        answer = f"✓ Created {len(created)} subtasks under **{action['parent_key']}**:\n\n{lines}"
+        if errors:
+            answer += f"\n\n⚠️ Failed: {'; '.join(errors)}"
+    else:
+        answer = f"Failed to create subtasks: {'; '.join(errors)}"
+    return {**state, "answer": answer, "citations": [], "pending_action": None}
+
+
+def _do_confluence_create(state: AgentState, action: dict) -> AgentState:
+    from agent.tools.confluence_tools import create_confluence_page
+    try:
+        result = create_confluence_page(
+            title=action["title"],
+            content=action["content"],
+            parent_title=action.get("parent_title") or None,
+        )
+        answer = (
+            f"✓ Created Confluence page **{action['title']}**.\n\n"
+            f"[Open in Confluence]({result['url']})"
+        )
+        feature_id = state.get("feature_id")
+        if feature_id:
+            try:
+                from agent.tools.feature_tools import link_artefact
+                link_artefact(feature_id, "confluence_page", result["page_id"], result["url"], action["title"])
+            except Exception:
+                pass
+    except Exception as e:
+        answer = f"Failed to create Confluence page: {e}"
     return {**state, "answer": answer, "citations": [], "pending_action": None}
 
 

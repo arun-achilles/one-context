@@ -462,6 +462,11 @@ async def _stream_chat(
 
         # 2. Check if this conversation belongs to a Feature session (for state)
         feature_id = get_feature_for_conversation(conversation_id)
+        role = None
+        if feature_id:
+            sessions = get_sessions(feature_id)
+            session = next((s for s in sessions if s["conversation_id"] == conversation_id), None)
+            role = session["role"] if session else None
 
         # 3. Build LangChain message history from DB with compression.
         # Keep feature bootstrap messages + last RECENT_TURNS full turns verbatim.
@@ -511,6 +516,7 @@ async def _stream_chat(
         initial_state = {
             "messages": history,
             "feature_id": feature_id,
+            "role": role,
             "intent": None,
             "retrieved_chunks": [],
             "answer": None,

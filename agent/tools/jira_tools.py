@@ -136,3 +136,56 @@ def search_jira(query: str, project_key: str | None = None, max_results: int = 5
             "status": (fields.get("status") or {}).get("name", ""),
         })
     return issues
+
+
+def update_jira_issue(
+    key: str,
+    update_summary: str | None = None,
+    append_section: dict | None = None,
+    add_comment: str | None = None,
+) -> dict:
+    """Update an existing Jira issue. append_section is {heading, content}. Returns {key, url, updated_fields}."""
+    jira = _client()
+    updated_fields = []
+    if update_summary:
+        jira.update_issue_field(key, {"summary": update_summary})
+        updated_fields.append("summary")
+    if append_section:
+        issue = jira.issue(key)
+        existing = str(issue["fields"].get("description") or "")
+        new_desc = f"{existing}\n\n*{append_section['heading']}:*\n{append_section['content']}"
+        jira.update_issue_field(key, {"description": new_desc})
+        updated_fields.append(f"description (+{append_section['heading']})")
+    if add_comment:
+        jira.issue_add_comment(key, add_comment)
+        updated_fields.append("comment")
+    return {
+        "key": key,
+        "url": f"{os.environ['JIRA_URL']}/browse/{key}",
+        "updated_fields": updated_fields,
+    }
+
+
+def create_jira_subtask(
+    parent_key: str,
+    title: str,
+    description: str = "",
+    project_key: str | None = None,
+) -> dict:
+    """Create a subtask/child issue under a parent Jira issue. Returns {key, url, parent_key}."""
+    project = project_key or os.environ.get("JIRA_PROJECT_KEY", "CL")
+    jira = _client()
+    fields = {
+        "project": {"key": project},
+        "summary": title,
+        "description": description,
+        "issuetype": {"name": "Sub-task"},
+        "parent": {"key": parent_key},
+    }
+    result = jira.create_issue(fields=fields)
+    key = result.get("key", "")
+    return {
+        "key": key,
+        "url": f"{os.environ['JIRA_URL']}/browse/{key}",
+        "parent_key": parent_key,
+    }

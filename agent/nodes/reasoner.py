@@ -110,6 +110,56 @@ CONTENT: <content to append>
 
 If you cannot determine both clearly, ask one short clarifying question."""
 
+JIRA_UPDATE_SYSTEM = """You are One Context. The user wants to update an existing Jira ticket.
+
+Extract from their message:
+- KEY: the Jira ticket key (e.g. CL-1524)
+- ACTION: one of: append_section | add_comment | update_summary
+- HEADING: section heading (for append_section, e.g. 'Technical Tasks', 'QA Notes', 'Acceptance Criteria') — empty for other actions
+- CONTENT: the content to add
+
+Reply in EXACT format:
+KEY: <ticket key>
+ACTION: <action>
+HEADING: <heading or empty>
+CONTENT: <content>
+
+If you cannot determine the key or content, ask one short clarifying question."""
+
+CREATE_SUBTASKS_SYSTEM = """You are One Context. The user wants to break a Jira story into subtasks.
+
+Generate 3-5 concrete, actionable subtasks based on the story context.
+
+Reply in EXACT format:
+PARENT: <parent ticket key>
+SUBTASKS:
+- <title (max 80 chars)> | <one-sentence description>
+- <title> | <description>
+
+Tailor to the session role: Tech Lead sessions include implementation tasks, spikes, architecture decisions. Dev sessions include specific coding tasks."""
+
+CREATE_CONFLUENCE_SYSTEM = """You are One Context. The user wants to create a new Confluence page.
+
+Extract from their message:
+- TITLE: the page title
+- PARENT: parent page title (empty if top-level)
+- CONTENT: the page content to create
+
+Reply in EXACT format:
+TITLE: <page title>
+PARENT: <parent page title or empty>
+CONTENT: <content>
+
+Tailor style to role: PO/BA → feature spec; Tech Lead → technical design or ADR; Dev → runbook or implementation notes; QA → test plan."""
+
+ROLE_PERSONAS = {
+    "po":        "You are assisting a Product Owner. Focus on business value, user outcomes, and acceptance criteria. Avoid implementation details.",
+    "ba":        "You are assisting a Business Analyst. Focus on requirements, process flows, business rules, and acceptance criteria.",
+    "tech_lead": "You are assisting a Tech Lead. Include technical approach, architecture decisions, implementation subtasks, and risks. Reference existing services and codebase patterns from context.",
+    "dev":       "You are assisting a Developer. Be specific about code locations and implementation steps. Reference the codebase context.",
+    "qa":        "You are assisting a QA Engineer. Focus on test cases, edge cases, regression risk, and validation criteria.",
+}
+
 
 def reasoner_node(state: AgentState) -> AgentState:
     intent = state.get("intent", "qa")
@@ -129,6 +179,13 @@ def reasoner_node(state: AgentState) -> AgentState:
 
     if intent == "link_artefact":
         return _prepare_link_artefact(state, query)
+
+    if intent == "update_jira":
+        return _prepare_jira_update(state, query)
+    if intent == "create_subtasks":
+        return _prepare_create_subtasks(state, query)
+    if intent == "create_confluence":
+        return _prepare_confluence_create(state, query)
 
     # qa, pipeline_query, confirm_action (shouldn't reach here), default
     return _answer_qa(state, query)
@@ -397,18 +454,21 @@ def _clarify(state: AgentState, query: str) -> AgentState:
 
 
 def _build_system(base_system: str, state: AgentState) -> str:
-    """Prepend feature context to system prompt if conversation is in a feature session."""
+    """Prepend feature context and append role persona to system prompt."""
+    parts = [base_system]
     feature_id = state.get("feature_id")
-    if not feature_id:
-        return base_system
-    try:
-        from agent.tools.feature_tools import build_feature_context
-        ctx = build_feature_context(feature_id)
-        if ctx:
-            return f"{base_system}\n\n{ctx}"
-    except Exception:
-        pass
-    return base_system
+    role = state.get("role")
+    if feature_id:
+        try:
+            from agent.tools.feature_tools import build_feature_context
+            ctx = build_feature_context(feature_id)
+            if ctx:
+                parts.append(ctx)
+        except Exception:
+            pass
+    if role and role in ROLE_PERSONAS:
+        parts.append(ROLE_PERSONAS[role])
+    return "\n\n".join(parts)
 
 
 def _prepare_link_artefact(state: AgentState, query: str) -> AgentState:
@@ -478,6 +538,127 @@ def _prepare_link_artefact(state: AgentState, query: str) -> AgentState:
         f"- 📋 **{key}**: {summary}\n"
         f"- [{url}]({url})\n\n"
         f"Reply **yes** to confirm, or tell me if this is wrong."
+        f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
+    )
+    return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}
+
+
+def _prepare_jira_update(state: AgentState, query: str) -> AgentState:
+    """Handle 'update CL-1524 — add tech tasks' — extract key/action/content via Haiku, confirm before updating."""
+    system = _build_system(JIRA_UPDATE_SYSTEM, state)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        system=system,
+        messages=[{"role": "user", "content": query}],
+    )
+    raw = response.content[0].text.strip()
+
+    key, action, heading, content = "", "", "", ""
+    for line in raw.splitlines():
+        if line.startswith("KEY:"):
+            key = line[4:].strip()
+        elif line.startswith("ACTION:"):
+            action = line[7:].strip()
+        elif line.startswith("HEADING:"):
+            heading = line[8:].strip()
+        elif line.startswith("CONTENT:"):
+            content = line[8:].strip()
+
+    if not key or not content:
+        return {**state, "answer": raw, "citations": []}
+
+    heading_str = f" — section: **{heading}**" if heading else ""
+    action_label = {"append_section": "append section", "add_comment": "add comment", "update_summary": "update summary"}.get(action, action)
+    pending_action = {"type": "update_jira", "key": key, "action": action, "heading": heading, "content": content}
+    answer_with_marker = (
+        f"I'll {action_label} on **{key}**{heading_str}:\n\n> {content[:200]}\n\n"
+        f"Reply **yes** to confirm."
+        f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
+    )
+    return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}
+
+
+def _prepare_create_subtasks(state: AgentState, query: str) -> AgentState:
+    """Handle 'break CL-1524 into tech tasks' — generate subtask list from story context, confirm before creating."""
+    # Build context from retrieved chunks (live Jira fetch already ran in retriever)
+    chunks = state.get("retrieved_chunks", [])
+    jira_chunks = [c for c in chunks if c.get("content_type") == "jira_issue"]
+    context = "\n".join(c["content"][:600] for c in jira_chunks[:2]) or "No parent ticket context found."
+
+    system = _build_system(CREATE_SUBTASKS_SYSTEM, state)
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        system=system,
+        messages=[{"role": "user", "content": f"Story context:\n{context}\n\nRequest: {query}"}],
+    )
+    raw = response.content[0].text.strip()
+
+    parent_key = ""
+    subtasks = []
+    in_subtasks = False
+    for line in raw.splitlines():
+        if line.startswith("PARENT:"):
+            parent_key = line[7:].strip()
+        elif line.startswith("SUBTASKS:"):
+            in_subtasks = True
+        elif in_subtasks and line.startswith("- "):
+            parts = line[2:].split(" | ", 1)
+            title = parts[0].strip()
+            desc = parts[1].strip() if len(parts) > 1 else ""
+            if title:
+                subtasks.append({"title": title, "description": desc})
+
+    if not parent_key or not subtasks:
+        return {**state, "answer": raw, "citations": []}
+
+    subtask_lines = "\n".join(f"- {s['title']}" for s in subtasks)
+    pending_action = {"type": "create_subtasks", "parent_key": parent_key, "subtasks": subtasks}
+    answer_with_marker = (
+        f"I'll create these {len(subtasks)} subtasks under **{parent_key}**:\n\n{subtask_lines}\n\n"
+        f"Reply **yes** to confirm."
+        f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
+    )
+    return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}
+
+
+def _prepare_confluence_create(state: AgentState, query: str) -> AgentState:
+    """Handle 'create a tech design doc for X' — extract title/content via Haiku, confirm before creating."""
+    system = _build_system(CREATE_CONFLUENCE_SYSTEM, state)
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=800,
+        system=system,
+        messages=[{"role": "user", "content": query}],
+    )
+    raw = response.content[0].text.strip()
+
+    title, parent_title, content = "", "", ""
+    content_lines = []
+    in_content = False
+    for line in raw.splitlines():
+        if line.startswith("TITLE:"):
+            title = line[6:].strip()
+        elif line.startswith("PARENT:"):
+            parent_title = line[7:].strip()
+        elif line.startswith("CONTENT:"):
+            in_content = True
+            rest = line[8:].strip()
+            if rest:
+                content_lines.append(rest)
+        elif in_content:
+            content_lines.append(line)
+    content = "\n".join(content_lines).strip()
+
+    if not title or not content:
+        return {**state, "answer": raw, "citations": []}
+
+    parent_str = f" under **{parent_title}**" if parent_title else ""
+    pending_action = {"type": "create_confluence", "title": title, "parent_title": parent_title, "content": content}
+    answer_with_marker = (
+        f"I'll create a new Confluence page **{title}**{parent_str}:\n\n> {content[:300]}\n\n"
+        f"Reply **yes** to confirm."
         f"\n\n<!-- PENDING_ACTION: {json.dumps(pending_action)} -->"
     )
     return {**state, "answer": answer_with_marker, "citations": [], "pending_action": pending_action}

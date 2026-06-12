@@ -7,6 +7,9 @@ Intents:
   story_draft       — user wants to create a Jira story
   remember          — user wants to persist a decision/fact to team memory
   confluence_update — user wants to update or append content to a Confluence page
+  update_jira       — user wants to update an existing Jira ticket
+  create_subtasks   — user wants to create subtasks under a Jira ticket
+  create_confluence — user wants to create a new Confluence page
   confirm_action    — user is confirming a pending write (yes/create/go ahead)
   clarify           — query too vague to act on
 """
@@ -24,6 +27,9 @@ SYSTEM = """Classify the user's message into exactly one intent:
 - remember: user explicitly wants to save a decision, fact, or agreement to team memory
 - confluence_update: user wants to update or append content to a Confluence page
 - link_artefact: user wants to link or add a specific Jira ticket, Confluence page, or other artefact to the current feature (e.g. "add CL-1524 to this feature", "link this card to the feature")
+- update_jira: user wants to update, edit, or add content to an existing Jira ticket
+- create_subtasks: user wants to break down a story into subtasks or child tasks under a Jira ticket
+- create_confluence: user wants to create a brand new Confluence page or document
 - confirm_action: user is confirming or approving a previously shown draft (e.g. "yes", "create it", "looks good", "go ahead")
 - clarify: message is too vague or ambiguous to act on
 
@@ -62,7 +68,9 @@ def router_node(state: AgentState) -> AgentState:
     except (json.JSONDecodeError, IndexError):
         intent = "qa"
 
-    valid = {"qa", "pipeline_query", "story_draft", "remember", "confluence_update", "link_artefact", "confirm_action", "clarify"}
+    valid = {"qa", "pipeline_query", "story_draft", "remember", "confluence_update",
+             "link_artefact", "update_jira", "create_subtasks", "create_confluence",
+             "confirm_action", "clarify"}
     if intent not in valid:
         intent = "qa"
 

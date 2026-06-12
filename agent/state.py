@@ -11,3 +11,4 @@ class AgentState(TypedDict):
     needs_clarification: bool
     pending_action: dict | None               # write action awaiting user confirmation
     feature_id: str | None                    # set if conversation belongs to a feature session
+    role: str | None                           # session role: po | ba | tech_lead | dev | qa
