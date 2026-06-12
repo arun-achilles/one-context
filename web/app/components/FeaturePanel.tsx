@@ -30,6 +30,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
   const [starting, setStarting] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [summarizing, setSummarizing] = useState<number | null>(null);
+  const [expandedTakeaway, setExpandedTakeaway] = useState<number | null>(null);
 
   function refreshDetail() {
     getFeature(feature.id).then(d => {
@@ -198,7 +199,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                           title="Save session summary"
                           className="text-xs px-2 py-1 rounded-lg font-semibold transition-opacity"
                           style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.25)" }}>
-                          {summarizing === s.id ? "…" : "💾 Save"}
+                          {summarizing === s.id ? "…" : "💡 Save"}
                         </button>
                       )}
                       <button
@@ -235,7 +236,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
               jira_epic:       { icon: "🏔️", label: "Jira Epics",       color: "#8b5cf6" },
               confluence_page: { icon: "📄", label: "Confluence Pages", color: "#22d3ee" },
               github_pr:       { icon: "🔀", label: "GitHub PRs",       color: "#10b981" },
-              memory:          { icon: "🧠", label: "Memories",          color: "#f59e0b" },
+              memory:          { icon: "💡", label: "Takeaways",          color: "#f59e0b" },
             };
             const grouped = links.reduce<Record<string, FeatureLink[]>>((acc, lnk) => {
               const key = lnk.link_type as string;
@@ -251,26 +252,55 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                     {meta.icon} {meta.label}
                   </div>
                   <div className="space-y-1">
-                    {items.map(lnk => (
-                      <div key={lnk.id}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                        style={{ background: "rgba(20,31,56,0.88)", border: "1px solid rgba(62,83,137,0.75)" }}>
-                        {lnk.link_url ? (
-                          <a href={lnk.link_url} target="_blank" rel="noopener noreferrer"
-                            className="text-xs hover:underline truncate flex-1"
-                            style={{ color: meta.color }}>
-                            {lnk.title || lnk.link_id}
-                          </a>
-                        ) : (
-                          <span className="text-xs truncate flex-1" style={{ color: "#64748b" }}>
-                            {lnk.title || lnk.link_id}
-                          </span>
-                        )}
-                        <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#334155" }}>
-                          {lnk.link_id}
-                        </span>
-                      </div>
-                    ))}
+                    {items.map(lnk => {
+                      const isTakeaway = lnk.link_type === "memory";
+                      const isExpanded = expandedTakeaway === lnk.id;
+                      return (
+                        <div key={lnk.id}
+                          className={`rounded-lg ${isTakeaway ? "cursor-pointer" : ""}`}
+                          style={{ background: "rgba(20,31,56,0.88)", border: `1px solid ${isTakeaway ? "rgba(245,158,11,0.3)" : "rgba(62,83,137,0.75)"}` }}
+                          onClick={isTakeaway ? () => setExpandedTakeaway(isExpanded ? null : lnk.id) : undefined}>
+                          <div className="flex items-start gap-2 px-3 py-2">
+                            {lnk.link_url ? (
+                              <a href={lnk.link_url} target="_blank" rel="noopener noreferrer"
+                                className="text-xs hover:underline truncate flex-1"
+                                style={{ color: meta.color }}
+                                onClick={e => e.stopPropagation()}>
+                                {lnk.title || lnk.link_id}
+                              </a>
+                            ) : (
+                              <span className={`text-xs flex-1 ${isTakeaway ? "" : "truncate"}`}
+                                style={{ color: isTakeaway ? "#d1a832" : "#64748b" }}>
+                                {isTakeaway
+                                  ? (isExpanded ? (lnk.title || lnk.link_id) : (lnk.title || lnk.link_id).slice(0, 60) + ((lnk.title || "").length > 60 ? "…" : ""))
+                                  : (lnk.title || lnk.link_id)
+                                }
+                              </span>
+                            )}
+                            {!isTakeaway && (
+                              <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#334155" }}>
+                                {lnk.link_id}
+                              </span>
+                            )}
+                            {isTakeaway && (
+                              <span className="text-[10px] flex-shrink-0 ml-1" style={{ color: "#475569" }}>
+                                {isExpanded ? "▲" : "▼"}
+                              </span>
+                            )}
+                          </div>
+                          {isTakeaway && isExpanded && (
+                            <div className="px-3 pb-2 pt-0">
+                              <p className="text-xs leading-relaxed" style={{ color: "#d1a832" }}>
+                                {lnk.title || lnk.link_id}
+                              </p>
+                              <span className="text-[10px] mt-1 block" style={{ color: "#475569" }}>
+                                {new Date(lnk.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

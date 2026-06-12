@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { streamChat, getMessages, Message } from "@/app/lib/api";
+import { streamChat, getMessages, getLinks, Message, FeatureLink } from "@/app/lib/api";
 
 interface Props {
   conversationId: number;
@@ -35,8 +35,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       <div className="flex justify-center fade-up">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
           style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b" }}>
-          <span>💾</span>
-          <span>Checkpoint saved: {summary}</span>
+          <span>💡</span>
+          <span>Takeaway saved: {summary}</span>
         </div>
       </div>
     );
@@ -135,14 +135,15 @@ function inferSourceType(src: RichSource): string {
   if (url.includes("/wiki/")) return "confluence_page";
   if (url.includes("github.com") || url.includes("/pull/")) return "feature_link";
   if (label.includes("session summary")) return "feature_session_summary";
-  if (label.includes("team memory")) return "team_memory";
+  if (label.includes("team memory")) return "takeaway";
   return "knowledge";
 }
 
 const SOURCE_TYPE_ICONS: Record<string, string> = {
   feature_session_summary: "🗂️",
   feature_link:            "🔗",
-  team_memory:             "🧠",
+  takeaway:                "💡",
+  team_memory:             "💡",
   jira_issue:              "📋",
   confluence_page:         "📄",
   business_flow:           "⚙️",
@@ -162,8 +163,18 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [links, setLinks] = useState<FeatureLink[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedTakeaway, setExpandedTakeaway] = useState<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Fetch feature links (takeaways + artefacts) when featureId is set
+  const refreshLinks = useCallback(() => {
+    if (featureId) getLinks(featureId).then(setLinks).catch(console.error);
+  }, [featureId]);
+
+  useEffect(() => { refreshLinks(); }, [refreshLinks]);
 
   // Load existing messages
   useEffect(() => {
@@ -223,8 +234,10 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
     } finally {
       setLoading(false);
       inputRef.current?.focus();
+      // Refresh sidebar after response in case a takeaway or artefact was saved
+      refreshLinks();
     }
-  }, [conversationId, loading, author]);
+  }, [conversationId, loading, author, refreshLinks]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -235,8 +248,21 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
 
   const isEmpty = messages.length === 0;
 
+  const takeaways = links.filter(l => l.link_type === "memory");
+  const artefacts = links.filter(l => l.link_type !== "memory");
+
+  const ARTEFACT_META: Record<string, { icon: string; color: string }> = {
+    jira_story:      { icon: "📋", color: "#6366f1" },
+    jira_task:       { icon: "✅", color: "#06b6d4" },
+    jira_epic:       { icon: "🏔️", color: "#8b5cf6" },
+    confluence_page: { icon: "📄", color: "#22d3ee" },
+    github_pr:       { icon: "🔀", color: "#10b981" },
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full min-w-0">
+      {/* Main chat column */}
+      <div className="flex flex-col flex-1 min-w-0 h-full">
       {/* Feature context banner */}
       {featureName && (
         <div className="flex-shrink-0 px-6 py-2.5 flex items-center gap-2.5 border-b"
@@ -246,6 +272,14 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             <span className="font-semibold">{featureName}</span>
           </span>
           <span className="text-[10px] font-mono" style={{ color: "#4f46e5" }}>{featureId}</span>
+          {featureId && (
+            <button
+              onClick={() => setSidebarOpen(o => !o)}
+              className="ml-auto text-[10px] px-2 py-0.5 rounded-md transition-colors"
+              style={{ color: "#475569", border: "1px solid rgba(62,83,137,0.4)" }}>
+              {sidebarOpen ? "Hide panel" : "Show panel"}
+            </button>
+          )}
         </div>
       )}
 
@@ -309,7 +343,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             <button
               onClick={() => send("remember our key decisions and action items from this conversation so far")}
               disabled={loading}
-              title="Save memory checkpoint"
+              title="Save takeaway"
               className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 text-sm"
               style={{
                 background: "rgba(245,158,11,0.1)",
@@ -334,6 +368,99 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
           Enter to send · Shift+Enter for new line
         </p>
       </div>
+      </div>{/* end main chat column */}
+
+      {/* Right sidebar — takeaways + artefacts (feature sessions only) */}
+      {featureId && sidebarOpen && (
+        <div className="flex-shrink-0 w-72 border-l flex flex-col overflow-y-auto"
+          style={{ borderColor: "rgba(62,83,137,0.4)", background: "rgba(10,17,35,0.7)" }}>
+
+          {/* Takeaways */}
+          <div className="p-4 border-b" style={{ borderColor: "rgba(62,83,137,0.3)" }}>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm">💡</span>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
+                Takeaways
+              </span>
+              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-mono"
+                style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                {takeaways.length}
+              </span>
+            </div>
+            {takeaways.length === 0 ? (
+              <p className="text-[11px] italic" style={{ color: "#334155" }}>
+                No takeaways yet — click 💡 to save key decisions.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {takeaways.map(t => (
+                  <div key={t.id}
+                    className="rounded-lg cursor-pointer transition-all"
+                    style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}
+                    onClick={() => setExpandedTakeaway(expandedTakeaway === t.id ? null : t.id)}>
+                    <div className="flex items-start gap-2 px-3 py-2">
+                      <span className="text-xs mt-0.5 flex-shrink-0" style={{ color: "#f59e0b" }}>💡</span>
+                      <p className={`text-xs leading-relaxed ${expandedTakeaway === t.id ? "" : "line-clamp-2"}`}
+                        style={{ color: "#d1a832" }}>
+                        {t.title || t.link_id}
+                      </p>
+                    </div>
+                    {expandedTakeaway === t.id && (
+                      <div className="px-3 pb-2">
+                        <span className="text-[10px]" style={{ color: "#475569" }}>
+                          {new Date(t.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Linked Artefacts */}
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm">🔗</span>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#6366f1" }}>
+                Linked Artefacts
+              </span>
+              <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-mono"
+                style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1" }}>
+                {artefacts.length}
+              </span>
+            </div>
+            {artefacts.length === 0 ? (
+              <p className="text-[11px] italic" style={{ color: "#334155" }}>
+                No artefacts linked yet.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {artefacts.map(a => {
+                  const meta = ARTEFACT_META[a.link_type] ?? { icon: "🔗", color: "#94a3b8" };
+                  return (
+                    <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
+                      style={{ background: "rgba(20,31,56,0.6)", border: "1px solid rgba(62,83,137,0.4)" }}>
+                      <span className="text-xs flex-shrink-0">{meta.icon}</span>
+                      {a.link_url ? (
+                        <a href={a.link_url} target="_blank" rel="noopener noreferrer"
+                          className="text-[11px] truncate hover:underline flex-1"
+                          style={{ color: meta.color }}>
+                          {a.title || a.link_id}
+                        </a>
+                      ) : (
+                        <span className="text-[11px] truncate flex-1" style={{ color: "#475569" }}>
+                          {a.title || a.link_id}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
