@@ -34,7 +34,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     return (
       <div className="flex justify-center fade-up">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-          style={{ background: "rgba(180,140,60,0.1)", border: "1px solid rgba(180,140,60,0.3)", color: "#8a5e10" }}>
+          style={{ background: "rgba(255,222,34,0.08)", border: "1px solid rgba(255,222,34,0.2)", color: "#ffde22" }}>
           <span>💡</span>
           <span>Takeaway saved: {summary}</span>
         </div>
@@ -45,8 +45,10 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   return (
     <div className={`flex gap-3 fade-up ${isUser ? "flex-row-reverse" : ""}`}>
       {/* Avatar */}
-      <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 text-white"
-        style={{ background: isUser ? "#6366f1" : "#5a5248" }}>
+      <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
+        style={isUser
+          ? { background: "#ffde22", color: "#0a0a0a" }
+          : { background: "#222222", color: "#888888" }}>
         {isUser ? "U" : "⬡"}
       </div>
 
@@ -56,10 +58,10 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           isUser ? "rounded-tr-sm" : "rounded-tl-sm"
         }`}
           style={isUser
-            ? { background: "#6366f1", color: "#fff" }
-            : { background: "#ede8de", border: "1px solid #d4ccbf", color: "#2d2520" }}>
+            ? { background: "#111111", color: "#ffffff", border: "1px solid #ffde22" }
+            : { background: "#1a1a1a", color: "#ffffff", border: "1px solid #2a2a2a" }}>
           {msg.streaming && !cleanContent ? (
-            <span className="typing-cursor text-xs" style={{ color: "#a89e94" }}>Thinking</span>
+            <span className="typing-cursor text-xs" style={{ color: "#555555" }}>Thinking</span>
           ) : (
             <div
               className="message-content"
@@ -81,9 +83,9 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
               return (
                 <a key={i} href={src.url} target="_blank" rel="noopener noreferrer"
                   className="text-[10px] px-2 py-0.5 rounded-full transition-all flex items-center gap-1"
-                  style={{ background: "rgba(99,102,241,0.08)", color: "#4f46e5", border: "1px solid rgba(99,102,241,0.25)" }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(99,102,241,0.15)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(99,102,241,0.08)")}>
+                  style={{ background: "rgba(255,222,34,0.08)", color: "#ffde22", border: "1px solid rgba(255,222,34,0.25)" }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,222,34,0.15)")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,222,34,0.08)")}>
                   <span>{typeIcon}</span>
                   <span>{label}</span>
                 </a>
@@ -246,11 +248,11 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
   const artefacts = links.filter(l => l.link_type !== "memory");
 
   const ARTEFACT_META: Record<string, { icon: string; color: string }> = {
-    jira_story:      { icon: "📋", color: "#6366f1" },
-    jira_task:       { icon: "✅", color: "#06b6d4" },
-    jira_epic:       { icon: "🏔️", color: "#8b5cf6" },
-    confluence_page: { icon: "📄", color: "#22d3ee" },
-    github_pr:       { icon: "🔀", color: "#10b981" },
+    jira_story:      { icon: "📋", color: "#ffde22" },
+    jira_task:       { icon: "✅", color: "#ffde22" },
+    jira_epic:       { icon: "🏔️", color: "#ffde22" },
+    confluence_page: { icon: "📄", color: "#ffffff" },
+    github_pr:       { icon: "🔀", color: "#888888" },
   };
 
   return (
@@ -260,17 +262,17 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {/* Feature context banner */}
       {featureName && (
         <div className="flex-shrink-0 px-6 py-2.5 flex items-center gap-2.5 border-b"
-          style={{ background: "rgba(99,102,241,0.05)", borderColor: "rgba(99,102,241,0.2)" }}>
-          <div className="w-2 h-2 rounded-full bg-indigo-400" />
-          <span className="text-xs" style={{ color: "#818cf8" }}>
+          style={{ background: "rgba(255,222,34,0.05)", borderColor: "rgba(255,222,34,0.2)" }}>
+          <div className="w-2 h-2 rounded-full" style={{ background: "#ffde22" }} />
+          <span className="text-xs" style={{ color: "#ffde22" }}>
             <span className="font-semibold">{featureName}</span>
           </span>
-          <span className="text-[10px] font-mono" style={{ color: "#4f46e5" }}>{featureId}</span>
+          <span className="text-[10px] font-mono" style={{ color: "#888888" }}>{featureId}</span>
           {featureId && (
             <button
               onClick={() => setSidebarOpen(o => !o)}
               className="ml-auto text-[10px] px-2 py-0.5 rounded-md transition-colors"
-              style={{ color: "#7a7268", border: "1px solid #d4ccbf" }}>
+              style={{ color: "#555555", border: "1px solid #2a2a2a" }}>
               {sidebarOpen ? "Hide panel" : "Show panel"}
             </button>
           )}
@@ -283,13 +285,13 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
           <div className="flex flex-col items-center justify-center h-full gap-6 text-center">
             <div>
               <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl"
-                style={{ background: "#ede8de", border: "1px solid #d4ccbf" }}>
+                style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
                 {featureName ? "🗂️" : "💬"}
               </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: "#2d2520" }}>
+              <h2 className="text-xl font-bold mb-2" style={{ color: "#ffffff" }}>
                 {featureName ? `Working on: ${featureName}` : "General Chat"}
               </h2>
-              <p className="text-sm max-w-sm" style={{ color: "#7a7268" }}>
+              <p className="text-sm max-w-sm" style={{ color: "#888888" }}>
                 {featureName
                   ? "Ask about existing capabilities, draft stories, or explore the codebase for this feature."
                   : "Ask anything about your Jira, Confluence, or codebase knowledge."}
@@ -299,9 +301,9 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               {SUGGESTIONS.map(s => (
                 <button key={s} onClick={() => send(s)}
                   className="text-xs text-left px-3.5 py-2.5 rounded-xl transition-all"
-                  style={{ background: "#ede8de", border: "1px solid #d4ccbf", color: "#5a5248" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#6366f1"; e.currentTarget.style.color = "#4f46e5"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#d4ccbf"; e.currentTarget.style.color = "#5a5248"; }}>
+                  style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#888888" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#ffde22"; e.currentTarget.style.color = "#ffffff"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#2a2a2a"; e.currentTarget.style.color = "#888888"; }}>
                   {s}
                 </button>
               ))}
@@ -316,7 +318,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {/* Input */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2">
         <div className="flex items-end gap-2 p-2 rounded-2xl transition-all"
-          style={{ background: "#ede8de", border: "1px solid #d4ccbf" }}>
+          style={{ background: "#111111", border: "1px solid #2a2a2a" }}>
           <textarea
             ref={inputRef}
             value={input}
@@ -326,7 +328,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             rows={1}
             disabled={loading}
             className="flex-1 bg-transparent text-sm outline-none resize-none px-2 py-1.5 max-h-32"
-            style={{ caretColor: "#6366f1", color: "#2d2520" }}
+            style={{ caretColor: "#ffde22", color: "#ffffff" }}
             onInput={e => {
               const t = e.currentTarget;
               t.style.height = "auto";
@@ -340,9 +342,9 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
               title="Save takeaway"
               className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30 text-sm"
               style={{
-                background: "rgba(180,140,60,0.1)",
-                border: "1px solid rgba(180,140,60,0.3)",
-                color: "#8a5e10"
+                background: "rgba(255,222,34,0.08)",
+                border: "1px solid rgba(255,222,34,0.2)",
+                color: "#ffde22"
               }}>
               💡
             </button>
@@ -351,14 +353,14 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
             onClick={() => send(input)}
             disabled={!input.trim() || loading}
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all disabled:opacity-30"
-            style={{ background: input.trim() && !loading ? "#6366f1" : "var(--bg3)" }}>
+            style={{ background: input.trim() && !loading ? "#ffde22" : "#1a1a1a" }}>
             {loading
-              ? <span className="w-3 h-3 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              ? <span className="w-3 h-3 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#ffde22", borderTopColor: "transparent" }} />
+              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={input.trim() && !loading ? "#0a0a0a" : "#555555"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             }
           </button>
         </div>
-        <p className="text-[10px] text-center mt-1.5" style={{ color: "#a89e94" }}>
+        <p className="text-[10px] text-center mt-1.5" style={{ color: "#555555" }}>
           Enter to send · Shift+Enter for new line
         </p>
       </div>
@@ -367,22 +369,22 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
       {/* Right sidebar — takeaways + artefacts (feature sessions only) */}
       {featureId && sidebarOpen && (
         <div className="flex-shrink-0 w-72 border-l flex flex-col overflow-y-auto"
-          style={{ borderColor: "#d4ccbf", background: "#ede8de" }}>
+          style={{ borderColor: "#2a2a2a", background: "#111111" }}>
 
           {/* Takeaways */}
-          <div className="p-4 border-b" style={{ borderColor: "#d4ccbf" }}>
+          <div className="p-4 border-b" style={{ borderColor: "#2a2a2a" }}>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm">💡</span>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#f59e0b" }}>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#ffde22" }}>
                 Takeaways
               </span>
               <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-                style={{ background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                style={{ background: "rgba(255,222,34,0.1)", color: "#ffde22" }}>
                 {takeaways.length}
               </span>
             </div>
             {takeaways.length === 0 ? (
-              <p className="text-[11px] italic" style={{ color: "#334155" }}>
+              <p className="text-[11px] italic" style={{ color: "#555555" }}>
                 No takeaways yet — click 💡 to save key decisions.
               </p>
             ) : (
@@ -390,18 +392,18 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
                 {takeaways.map(t => (
                   <div key={t.id}
                     className="rounded-lg cursor-pointer transition-all"
-                    style={{ background: "rgba(180,140,60,0.08)", border: "1px solid rgba(180,140,60,0.25)" }}
+                    style={{ background: "rgba(255,222,34,0.06)", border: "1px solid rgba(255,222,34,0.15)" }}
                     onClick={() => setExpandedTakeaway(expandedTakeaway === t.id ? null : t.id)}>
                     <div className="flex items-start gap-2 px-3 py-2">
                       <span className="text-xs mt-0.5 flex-shrink-0">💡</span>
                       <p className={`text-xs leading-relaxed ${expandedTakeaway === t.id ? "" : "line-clamp-2"}`}
-                        style={{ color: "#6b4e10" }}>
+                        style={{ color: "#c8ac00" }}>
                         {t.title || t.link_id}
                       </p>
                     </div>
                     {expandedTakeaway === t.id && (
                       <div className="px-3 pb-2">
-                        <span className="text-[10px]" style={{ color: "#a89e94" }}>
+                        <span className="text-[10px]" style={{ color: "#555555" }}>
                           {new Date(t.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                         </span>
                       </div>
@@ -416,25 +418,25 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
           <div className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-sm">🔗</span>
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#6366f1" }}>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#ffffff" }}>
                 Linked Artefacts
               </span>
               <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-mono"
-                style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1" }}>
+                style={{ background: "rgba(255,255,255,0.05)", color: "#888888" }}>
                 {artefacts.length}
               </span>
             </div>
             {artefacts.length === 0 ? (
-              <p className="text-[11px] italic" style={{ color: "#a89e94" }}>
+              <p className="text-[11px] italic" style={{ color: "#555555" }}>
                 No artefacts linked yet.
               </p>
             ) : (
               <div className="space-y-1.5">
                 {artefacts.map(a => {
-                  const meta = ARTEFACT_META[a.link_type] ?? { icon: "🔗", color: "#94a3b8" };
+                  const meta = ARTEFACT_META[a.link_type] ?? { icon: "🔗", color: "#888888" };
                   return (
                     <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-                      style={{ background: "#f0ece3", border: "1px solid #d4ccbf" }}>
+                      style={{ background: "#1a1a1a", border: "1px solid #2a2a2a" }}>
                       <span className="text-xs flex-shrink-0">{meta.icon}</span>
                       {a.link_url ? (
                         <a href={a.link_url} target="_blank" rel="noopener noreferrer"
@@ -443,7 +445,7 @@ export default function ChatArea({ conversationId, featureContext, featureName, 
                           {a.title || a.link_id}
                         </a>
                       ) : (
-                        <span className="text-[11px] truncate flex-1" style={{ color: "#475569" }}>
+                        <span className="text-[11px] truncate flex-1" style={{ color: "#888888" }}>
                           {a.title || a.link_id}
                         </span>
                       )}

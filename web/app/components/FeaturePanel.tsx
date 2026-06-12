@@ -10,18 +10,18 @@ interface Props {
 }
 
 const ROLES = [
-  { key: "po",         label: "Product Owner",   icon: "📋", color: "#6366f1" },
-  { key: "tech_lead",  label: "Tech Lead",        icon: "🏗️",  color: "#06b6d4" },
-  { key: "dev",        label: "Developer",        icon: "💻", color: "#10b981" },
-  { key: "ba",         label: "Business Analyst", icon: "🧾", color: "#f59e0b" },
-  { key: "qa",         label: "QA",               icon: "🧪", color: "#ec4899" },
+  { key: "po",         label: "Product Owner",   icon: "📋", color: "#ffde22" },
+  { key: "tech_lead",  label: "Tech Lead",        icon: "🏗️",  color: "#ffffff" },
+  { key: "dev",        label: "Developer",        icon: "💻", color: "#888888" },
+  { key: "ba",         label: "Business Analyst", icon: "🧾", color: "#ffde22" },
+  { key: "qa",         label: "QA",               icon: "🧪", color: "#ffffff" },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  planned:     "bg-stone-200 text-stone-600",
-  in_progress: "bg-amber-100 text-amber-700",
-  shipped:     "bg-emerald-100 text-emerald-700",
-  paused:      "bg-stone-200 text-stone-500",
+  planned:     "bg-neutral-800 text-neutral-400",
+  in_progress: "bg-neutral-800 text-yellow-300",
+  shipped:     "bg-neutral-800 text-neutral-300",
+  paused:      "bg-neutral-800 text-neutral-500",
 };
 
 export default function FeaturePanel({ feature, onStartSession, author, onAuthorChange }: Props) {
@@ -88,7 +88,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-mono px-2 py-0.5 rounded"
-            style={{ background: "rgba(99,102,241,0.1)", color: "#6366f1", border: "1px solid rgba(99,102,241,0.2)" }}>
+            style={{ background: "rgba(255,222,34,0.1)", color: "#ffde22", border: "1px solid rgba(255,222,34,0.2)" }}>
             {feature.id}
           </span>
           <span className={`text-xs px-2 py-0.5 rounded font-semibold ${STATUS_COLORS[feature.status] ?? ""}`}>
@@ -96,33 +96,33 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
           </span>
           {feature.jira_epic && (
             <span className="text-xs px-2 py-0.5 rounded"
-              style={{ background: "rgba(6,182,212,0.1)", color: "#22d3ee", border: "1px solid rgba(6,182,212,0.2)" }}>
+              style={{ background: "rgba(255,255,255,0.05)", color: "#888888", border: "1px solid #2a2a2a" }}>
               {feature.jira_epic}
             </span>
           )}
         </div>
-        <h1 className="text-2xl font-bold" style={{ color: "#2d2520" }}>{feature.name}</h1>
+        <h1 className="text-2xl font-bold" style={{ color: "#ffffff" }}>{feature.name}</h1>
         {feature.description && (
-          <p className="text-sm mt-1.5" style={{ color: "#7a7268" }}>{feature.description}</p>
+          <p className="text-sm mt-1.5" style={{ color: "#888888" }}>{feature.description}</p>
         )}
       </div>
 
       {/* Your name */}
       <div className="mb-5">
-        <label className="text-xs font-semibold uppercase tracking-wider block mb-2" style={{ color: "#7a7268" }}>
+        <label className="text-xs font-semibold uppercase tracking-wider block mb-2" style={{ color: "#888888" }}>
           Your name
         </label>
         <input value={author} onChange={e => onAuthorChange(e.target.value)}
           placeholder="Enter your name to start a session"
           className="w-full px-3 py-2.5 rounded-xl text-sm outline-none transition-all"
-          style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "#2d2520", caretColor: "#6366f1" }}
-          onFocus={e => (e.currentTarget.style.borderColor = "#6366f1")}
-          onBlur={e => (e.currentTarget.style.borderColor = "var(--border)")} />
+          style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ffffff", caretColor: "#ffde22" }}
+          onFocus={e => (e.currentTarget.style.borderColor = "#ffde22")}
+          onBlur={e => (e.currentTarget.style.borderColor = "#2a2a2a")} />
       </div>
 
       {/* Start session */}
       <div className="mb-6">
-        <label className="text-xs font-semibold uppercase tracking-wider block mb-3" style={{ color: "#7a7268" }}>
+        <label className="text-xs font-semibold uppercase tracking-wider block mb-3" style={{ color: "#888888" }}>
           Start a session as
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -131,16 +131,16 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
               onClick={() => handleStart(r.key)}
               disabled={!author.trim() || starting !== null}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-left transition-all disabled:opacity-40"
-              style={{ background: "#e8e2d5", border: "1px solid #d4ccbf", color: "#5a5248" }}
+              style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#888888" }}
               onMouseEnter={e => {
                 if (author.trim()) {
-                  e.currentTarget.style.borderColor = r.color;
-                  e.currentTarget.style.color = "#2d2520";
+                  e.currentTarget.style.borderColor = "#ffde22";
+                  e.currentTarget.style.color = "#ffffff";
                 }
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "#d4ccbf";
-                e.currentTarget.style.color = "#5a5248";
+                e.currentTarget.style.borderColor = "#2a2a2a";
+                e.currentTarget.style.color = "#888888";
               }}>
               {starting === r.key
                 ? <span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -151,14 +151,14 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
           ))}
         </div>
         {!author.trim() && (
-          <p className="text-xs mt-2" style={{ color: "#a89e94" }}>Enter your name above to start a session.</p>
+          <p className="text-xs mt-2" style={{ color: "#555555" }}>Enter your name above to start a session.</p>
         )}
       </div>
 
       {/* Prior sessions */}
       {detail?.sessions && detail.sessions.length > 0 && (
         <div>
-          <label className="text-xs font-semibold uppercase tracking-wider block mb-3" style={{ color: "#7a7268" }}>
+          <label className="text-xs font-semibold uppercase tracking-wider block mb-3" style={{ color: "#888888" }}>
             Session history
           </label>
           <div className="space-y-2">
@@ -168,17 +168,17 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
               return (
                 <div key={s.id} className="p-3.5 rounded-xl"
                   style={{
-                    background: "#ede8de",
-                    border: "1px solid #d4ccbf",
-                    ...(isOwn ? { borderLeft: "3px solid #6366f1" } : {}),
+                    background: "#1a1a1a",
+                    border: "1px solid #2a2a2a",
+                    ...(isOwn ? { borderLeft: "3px solid #ffde22" } : {}),
                   }}>
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold" style={{ color: roleInfo?.color ?? "#94a3b8" }}>
+                      <span className="text-xs font-bold" style={{ color: roleInfo?.color ?? "#888888" }}>
                         {roleInfo?.icon} {roleInfo?.label ?? s.role}
                       </span>
-                      {s.author && <span className="text-xs" style={{ color: "#7a7268" }}>{s.author}</span>}
-                      <span className="text-xs" style={{ color: "#a89e94" }}>
+                      {s.author && <span className="text-xs" style={{ color: "#888888" }}>{s.author}</span>}
+                      <span className="text-xs" style={{ color: "#555555" }}>
                         {new Date(s.created_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -188,7 +188,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                           onClick={() => handleContinue(s)}
                           disabled={starting !== null}
                           className="text-xs px-2 py-1 rounded-lg font-semibold"
-                          style={{ background: "rgba(99,102,241,0.1)", color: "#5b5bd6", border: "1px solid rgba(99,102,241,0.25)" }}>
+                          style={{ background: "rgba(255,222,34,0.1)", color: "#ffde22", border: "1px solid rgba(255,222,34,0.25)" }}>
                           Continue
                         </button>
                       )}
@@ -198,7 +198,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                           disabled={summarizing === s.id}
                           title="Save session summary"
                           className="text-xs px-2 py-1 rounded-lg font-semibold transition-opacity"
-                          style={{ background: "rgba(180,140,60,0.1)", color: "#8a5e10", border: "1px solid rgba(180,140,60,0.3)" }}>
+                          style={{ background: "rgba(255,222,34,0.1)", color: "#ffde22", border: "1px solid rgba(255,222,34,0.2)" }}>
                           {summarizing === s.id ? "…" : "💡 Save"}
                         </button>
                       )}
@@ -213,8 +213,8 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                     </div>
                   </div>
                   {s.summary
-                    ? <p className="text-xs leading-relaxed" style={{ color: "#5a5248" }}>{s.summary}</p>
-                    : <p className="text-xs italic" style={{ color: "#a89e94" }}>No summary yet</p>
+                    ? <p className="text-xs leading-relaxed" style={{ color: "#888888" }}>{s.summary}</p>
+                    : <p className="text-xs italic" style={{ color: "#555555" }}>No summary yet</p>
                   }
                 </div>
               );
@@ -226,17 +226,17 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
       {/* Linked Artefacts */}
       {links.length > 0 && (
         <div className="mt-6">
-          <label className="text-xs font-semibold uppercase tracking-wider block mb-3" style={{ color: "#7a7268" }}>
+          <label className="text-xs font-semibold uppercase tracking-wider block mb-3" style={{ color: "#888888" }}>
             Linked Artefacts
           </label>
           {(() => {
             const LINK_META: Record<string, { icon: string; label: string; color: string }> = {
-              jira_story:      { icon: "📋", label: "Jira Stories",     color: "#6366f1" },
-              jira_task:       { icon: "✅", label: "Jira Tasks",       color: "#06b6d4" },
-              jira_epic:       { icon: "🏔️", label: "Jira Epics",       color: "#8b5cf6" },
-              confluence_page: { icon: "📄", label: "Confluence Pages", color: "#22d3ee" },
-              github_pr:       { icon: "🔀", label: "GitHub PRs",       color: "#10b981" },
-              memory:          { icon: "💡", label: "Takeaways",          color: "#8a5e10" },
+              jira_story:      { icon: "📋", label: "Jira Stories",     color: "#ffde22" },
+              jira_task:       { icon: "✅", label: "Jira Tasks",       color: "#ffde22" },
+              jira_epic:       { icon: "🏔️", label: "Jira Epics",       color: "#ffde22" },
+              confluence_page: { icon: "📄", label: "Confluence Pages", color: "#ffffff" },
+              github_pr:       { icon: "🔀", label: "GitHub PRs",       color: "#888888" },
+              memory:          { icon: "💡", label: "Takeaways",          color: "#ffde22" },
             };
             const grouped = links.reduce<Record<string, FeatureLink[]>>((acc, lnk) => {
               const key = lnk.link_type as string;
@@ -245,7 +245,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
               return acc;
             }, {} as Record<string, FeatureLink[]>);
             return (Object.entries(grouped) as [string, FeatureLink[]][]).map(([type, items]) => {
-              const meta = LINK_META[type] ?? { icon: "🔗", label: type, color: "#94a3b8" };
+              const meta = LINK_META[type] ?? { icon: "🔗", label: type, color: "#888888" };
               return (
                 <div key={type} className="mb-3">
                   <div className="text-xs font-semibold mb-1.5" style={{ color: meta.color }}>
@@ -258,7 +258,9 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                       return (
                         <div key={lnk.id}
                           className={`rounded-lg ${isTakeaway ? "cursor-pointer" : ""}`}
-                          style={{ background: "#ede8de", border: `1px solid ${isTakeaway ? "rgba(180,140,60,0.35)" : "#d4ccbf"}` }}
+                          style={isTakeaway
+                            ? { background: "rgba(255,222,34,0.06)", border: "1px solid rgba(255,222,34,0.2)" }
+                            : { background: "#1a1a1a", border: "1px solid #2a2a2a" }}
                           onClick={isTakeaway ? () => setExpandedTakeaway(isExpanded ? null : lnk.id) : undefined}>
                           <div className="flex items-start gap-2 px-3 py-2">
                             {lnk.link_url ? (
@@ -270,7 +272,7 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                               </a>
                             ) : (
                               <span className={`text-xs flex-1 ${isTakeaway ? "" : "truncate"}`}
-                                style={{ color: isTakeaway ? "#6b4e10" : "#5a5248" }}>
+                                style={{ color: isTakeaway ? "#c8ac00" : "#888888" }}>
                                 {isTakeaway
                                   ? (isExpanded ? (lnk.title || lnk.link_id) : (lnk.title || lnk.link_id).slice(0, 60) + ((lnk.title || "").length > 60 ? "…" : ""))
                                   : (lnk.title || lnk.link_id)
@@ -278,22 +280,22 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
                               </span>
                             )}
                             {!isTakeaway && (
-                              <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#a89e94" }}>
+                              <span className="text-[10px] font-mono flex-shrink-0" style={{ color: "#555555" }}>
                                 {lnk.link_id}
                               </span>
                             )}
                             {isTakeaway && (
-                              <span className="text-[10px] flex-shrink-0 ml-1" style={{ color: "#7a7268" }}>
+                              <span className="text-[10px] flex-shrink-0 ml-1" style={{ color: "#555555" }}>
                                 {isExpanded ? "▲" : "▼"}
                               </span>
                             )}
                           </div>
                           {isTakeaway && isExpanded && (
                             <div className="px-3 pb-2 pt-0">
-                              <p className="text-xs leading-relaxed" style={{ color: "#d1a832" }}>
+                              <p className="text-xs leading-relaxed" style={{ color: "#c8ac00" }}>
                                 {lnk.title || lnk.link_id}
                               </p>
-                              <span className="text-[10px] mt-1 block" style={{ color: "#7a7268" }}>
+                              <span className="text-[10px] mt-1 block" style={{ color: "#555555" }}>
                                 {new Date(lnk.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                               </span>
                             </div>
@@ -313,11 +315,11 @@ export default function FeaturePanel({ feature, onStartSession, author, onAuthor
       Feature context preview intentionally hidden.
       {detail?.context && (
         <div className="mt-6">
-          <label className="text-xs font-semibold uppercase tracking-wider block mb-2" style={{ color: "#7a7268" }}>
+          <label className="text-xs font-semibold uppercase tracking-wider block mb-2" style={{ color: "#888888" }}>
             Context injected into sessions
           </label>
           <pre className="text-xs p-4 rounded-xl overflow-x-auto"
-            style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "#7a7268", whiteSpace: "pre-wrap", fontFamily: "JetBrains Mono, monospace" }}>
+            style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "#888888", whiteSpace: "pre-wrap", fontFamily: "JetBrains Mono, monospace" }}>
             {detail.context}
           </pre>
         </div>
