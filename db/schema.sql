@@ -39,6 +39,12 @@ CREATE INDEX IF NOT EXISTS idx_chunks_source    ON chunks(source_id);
 CREATE INDEX IF NOT EXISTS idx_chunks_type      ON chunks(content_type);
 CREATE INDEX IF NOT EXISTS idx_chunks_tags      ON chunks USING GIN(tags);
 CREATE INDEX IF NOT EXISTS idx_chunks_entities  ON chunks USING GIN(entities);
+CREATE INDEX IF NOT EXISTS idx_chunks_fts       ON chunks USING GIN (
+    (
+        setweight(to_tsvector('simple', coalesce(content, '')), 'A') ||
+        setweight(to_tsvector('simple', coalesce(summary, '')), 'B')
+    )
+);
 
 -- Vector similarity index (IVFFlat — good up to ~1M rows)
 -- Create AFTER initial bulk load for speed; recreate if recall drops.
@@ -70,6 +76,15 @@ CREATE INDEX IF NOT EXISTS idx_memory_sources ON memory USING GIN(related_source
 CREATE TABLE IF NOT EXISTS conversations (
     id         BIGSERIAL PRIMARY KEY,
     topic      TEXT NOT NULL,              -- e.g. epic name, feature name, free-form
+    pending_action JSONB,                  -- structured pending action awaiting confirmation
+    pending_options JSONB DEFAULT '[]',    -- options from the last pending assistant turn
+    pending_question TEXT,                 -- prompt shown before waiting for confirmation
+    pending_updated_at TIMESTAMPTZ,
+    session_goal TEXT,                     -- rolling session goal distilled from turns
+    session_decisions JSONB DEFAULT '[]',  -- rolling key decisions in the session
+    session_open_questions JSONB DEFAULT '[]', -- unresolved items and clarifications needed
+    session_next_actions JSONB DEFAULT '[]',   -- concrete next steps captured during session
+    session_memory_updated_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 

@@ -10,5 +10,10 @@ class AgentState(TypedDict):
     citations: list[dict]                     # [{title, url, score}]
     needs_clarification: bool
     pending_action: dict | None               # write action awaiting user confirmation
+    pending_context: dict | None              # persisted conversation-level pending context
+    resolved_query: str | None                # rewritten follow-up request resolved from dialogue state
+    session_context: str | None               # compact summary of the current session so all nodes share context
+    structured_memory: dict | None            # rolling memory: goal/decisions/open questions/next actions
+    conversation_id: int | None               # current conversation id
     feature_id: str | None                    # set if conversation belongs to a feature session
     role: str | None                           # session role: po | ba | tech_lead | dev | qa

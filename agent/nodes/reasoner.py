@@ -5,6 +5,7 @@ import json
 import anthropic
 import re as _re
 from agent.state import AgentState
+from agent.model_policy import call_model
 
 SUMMARIZE_CONVERSATION = "SUMMARIZE_CONVERSATION"
 
@@ -12,6 +13,18 @@ _SUMMARY_REQUEST_RE = _re.compile(
     r"\b(remember|save|summarize|capture|record)\b.{0,30}"
     r"\b(our discussion|our decisions|our conversation|what we discussed|"
     r"key decisions|key points|this conversation|our session)\b",
+    _re.IGNORECASE,
+)
+_ACK_ONLY_RE = _re.compile(
+    r"^\s*(?:"
+    r"(yes|yeah|yep|sure|ok|okay)(?:\s+(please|give|continue|proceed|go\s+ahead|do\s+it))?"
+    r"|got\s+it"
+    r"|understood"
+    r"|sounds\s+good"
+    r"|that\s+works"
+    r"|do\s+it"
+    r"|go\s+ahead"
+    r")\s*[.!]?\s*$",
     _re.IGNORECASE,
 )
 
@@ -31,7 +44,10 @@ Rules:
 - Feature session summaries [Sx] and linked artefacts [Sx] take priority over general knowledge."""
 
 CLARIFY_SYSTEM = """You are One Context, a team AI assistant.
-The user's question is too vague. Ask one focused clarifying question to narrow it down."""
+The user's latest message may be ambiguous (especially short follow-ups like 'yes').
+Use the previous assistant message as context and ask one focused clarifying question.
+If the previous assistant message offered options, ask the user to choose one option explicitly.
+Do not ask a generic 'what do you want?' question."""
 
 # ── Story drafting ────────────────────────────────────────────────────────────
 
@@ -163,7 +179,10 @@ ROLE_PERSONAS = {
 
 def reasoner_node(state: AgentState) -> AgentState:
     intent = state.get("intent", "qa")
-    query = state["messages"][-1].content
+    query = state.get("resolved_query") or state["messages"][-1].content
+
+    if intent == "clarify":
+        return _clarify(state, query)
 
     if state.get("needs_clarification"):
         return _clarify(state, query)
@@ -195,6 +214,7 @@ def reasoner_node(state: AgentState) -> AgentState:
 
 def _answer_qa(state: AgentState, query: str) -> AgentState:
     chunks = state.get("retrieved_chunks", [])
+    session_context = (state.get("session_context") or "").strip()
 
     # Build numbered source blocks so the model can cite inline as [S1], [S2], etc.
     # We label each source and track the mapping so we can later resolve which
@@ -217,13 +237,17 @@ def _answer_qa(state: AgentState, query: str) -> AgentState:
     context = "\n\n---\n\n".join(context_parts) or "No relevant context found."
     system = _build_system(QA_SYSTEM, state)
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
+    response = call_model(
+        client,
+        task="qa_synthesis",
         max_tokens=1200,
         system=system,
         messages=[{
             "role": "user",
-            "content": f"Question: {query}\n\nSources:\n\n{context}",
+            "content": (
+                f"Session context:\n{session_context[:1800] if session_context else 'None'}\n\n"
+                f"Question: {query}\n\nSources:\n\n{context}"
+            ),
         }],
     )
 
@@ -275,8 +299,9 @@ def _draft_story(state: AgentState, query: str) -> AgentState:
     context = "\n\n".join(context_parts) or "No prior context found — drafting from scratch."
 
     system = _build_system(STORY_DRAFT_SYSTEM, state)
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
+    response = call_model(
+        client,
+        task="story_draft",
         max_tokens=1200,
         system=system,
         messages=[{
@@ -320,8 +345,9 @@ def _summarize_conversation(state: AgentState) -> str:
         if content:
             transcript_lines.append(f"{role}: {content[:400]}")
     transcript = "\n\n".join(transcript_lines) or "No conversation yet."
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = call_model(
+        client,
+        task="session_summary",
         max_tokens=400,
         system=CONV_SUMMARY_SYSTEM,
         messages=[{"role": "user", "content": f"Conversation:\n\n{transcript}"}],
@@ -367,8 +393,9 @@ def generate_session_summary(conversation_id: int) -> str:
 
     transcript = "\n\n".join(lines[-16:])  # last 16 exchanges max
 
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = call_model(
+        client,
+        task="session_summary",
         max_tokens=600,
         system=SESSION_CLOSE_SYSTEM,
         messages=[{"role": "user", "content": f"Conversation transcript:\n\n{transcript}"}],
@@ -381,8 +408,9 @@ def _prepare_memory(state: AgentState, query: str) -> AgentState:
     if _SUMMARY_REQUEST_RE.search(query):
         fact = SUMMARIZE_CONVERSATION
     else:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        response = call_model(
+            client,
+            task="remember_extract",
             max_tokens=300,
             system=REMEMBER_SYSTEM,
             messages=[{"role": "user", "content": query}],
@@ -414,8 +442,9 @@ def _prepare_memory(state: AgentState, query: str) -> AgentState:
 
 def _prepare_confluence_update(state: AgentState, query: str) -> AgentState:
     system = _build_system(CONFLUENCE_UPDATE_SYSTEM, state)
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = call_model(
+        client,
+        task="confluence_extract",
         max_tokens=400,
         system=system,
         messages=[{"role": "user", "content": query}],
@@ -444,18 +473,121 @@ def _prepare_confluence_update(state: AgentState, query: str) -> AgentState:
 
 
 def _clarify(state: AgentState, query: str) -> AgentState:
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    pending_ctx = state.get("pending_context") or {}
+    pending_options = pending_ctx.get("pending_options") or []
+    pending_question = pending_ctx.get("pending_question")
+    session_context = (state.get("session_context") or "").strip()
+
+    if _ACK_ONLY_RE.match(query) and pending_options:
+        numbered = "\n".join(f"{i+1}. {opt}" for i, opt in enumerate(pending_options[:5]))
+        lead = pending_question or "I can continue from the previous step."
+        return {
+            **state,
+            "answer": f"{lead}\n\nPick one option and I will proceed:\n\n{numbered}",
+            "citations": [],
+        }
+
+    previous_assistant = _get_previous_assistant_message(state)
+    if _ACK_ONLY_RE.match(query) and previous_assistant:
+        options = _extract_assistant_options(previous_assistant)
+        if options:
+            numbered = "\n".join(f"{i+1}. {opt}" for i, opt in enumerate(options[:5]))
+            return {
+                **state,
+                "answer": (
+                    "Great, I can continue from the previous point. "
+                    "Pick one option and I will proceed:\n\n"
+                    f"{numbered}"
+                ),
+                "citations": [],
+            }
+
+    response = call_model(
+        client,
+        task="clarify",
         max_tokens=200,
         system=CLARIFY_SYSTEM,
-        messages=[{"role": "user", "content": query}],
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Session context:\n{session_context[:1200] if session_context else ''}\n\n"
+                f"Latest user message:\n{query}\n\n"
+                f"Previous assistant message:\n{previous_assistant[:1200] if previous_assistant else ''}"
+            ),
+        }],
     )
     return {**state, "answer": response.content[0].text, "citations": []}
+
+
+def _get_previous_assistant_message(state: AgentState) -> str:
+    msgs = state.get("messages", [])
+    for msg in reversed(msgs[:-1]):
+        t = (getattr(msg, "type", "") or "").lower()
+        cls = msg.__class__.__name__.lower()
+        if t in ("ai", "assistant") or "ai" in cls or "assistant" in cls:
+            content = getattr(msg, "content", "")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts = []
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        parts.append(item.get("text", ""))
+                    elif isinstance(item, str):
+                        parts.append(item)
+                return "\n".join(p for p in parts if p)
+            return str(content or "")
+    return ""
+
+
+def _extract_assistant_options(text: str) -> list[str]:
+    options: list[str] = []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        # Bulleted options: - item / • item
+        if line.startswith("- ") or line.startswith("• "):
+            candidate = line[2:].strip()
+            if candidate:
+                options.append(candidate)
+            continue
+        # Numbered options: 1. item / 1) item
+        m = _re.match(r"^\d+[\.)]\s+(.+)$", line)
+        if m:
+            candidate = m.group(1).strip()
+            if candidate:
+                options.append(candidate)
+
+    # Keep order, dedupe exact repeats
+    seen = set()
+    out = []
+    for opt in options:
+        if opt not in seen:
+            seen.add(opt)
+            out.append(opt)
+    return out
 
 
 def _build_system(base_system: str, state: AgentState) -> str:
     """Prepend feature context and append role persona to system prompt."""
     parts = [base_system]
+    memory = state.get("structured_memory") or {}
+    goal = str(memory.get("goal") or "").strip()
+    decisions = memory.get("decisions") or []
+    open_questions = memory.get("open_questions") or []
+    next_actions = memory.get("next_actions") or []
+    if goal or decisions or open_questions or next_actions:
+        lines = ["Rolling session memory:"]
+        lines.append(f"Goal: {goal if goal else '(not set)'}")
+        if decisions:
+            lines.append("Decisions: " + " | ".join(str(x) for x in decisions[:5]))
+        if open_questions:
+            lines.append("Open questions: " + " | ".join(str(x) for x in open_questions[:5]))
+        if next_actions:
+            lines.append("Next actions: " + " | ".join(str(x) for x in next_actions[:5]))
+        parts.append("\n".join(lines))
+
     feature_id = state.get("feature_id")
     role = state.get("role")
     if feature_id:
@@ -546,8 +678,9 @@ def _prepare_link_artefact(state: AgentState, query: str) -> AgentState:
 def _prepare_jira_update(state: AgentState, query: str) -> AgentState:
     """Handle 'update CL-1524 — add tech tasks' — extract key/action/content via Haiku, confirm before updating."""
     system = _build_system(JIRA_UPDATE_SYSTEM, state)
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = call_model(
+        client,
+        task="jira_extract",
         max_tokens=400,
         system=system,
         messages=[{"role": "user", "content": query}],
@@ -587,8 +720,9 @@ def _prepare_create_subtasks(state: AgentState, query: str) -> AgentState:
     context = "\n".join(c["content"][:600] for c in jira_chunks[:2]) or "No parent ticket context found."
 
     system = _build_system(CREATE_SUBTASKS_SYSTEM, state)
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
+    response = call_model(
+        client,
+        task="subtasks_draft",
         max_tokens=600,
         system=system,
         messages=[{"role": "user", "content": f"Story context:\n{context}\n\nRequest: {query}"}],
@@ -626,8 +760,9 @@ def _prepare_create_subtasks(state: AgentState, query: str) -> AgentState:
 def _prepare_confluence_create(state: AgentState, query: str) -> AgentState:
     """Handle 'create a tech design doc for X' — extract title/content via Haiku, confirm before creating."""
     system = _build_system(CREATE_CONFLUENCE_SYSTEM, state)
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+    response = call_model(
+        client,
+        task="confluence_create_extract",
         max_tokens=800,
         system=system,
         messages=[{"role": "user", "content": query}],

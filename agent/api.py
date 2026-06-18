@@ -28,8 +28,10 @@ Other:
 """
 import json
 import re
+import os
 from datetime import datetime, timezone
 from typing import AsyncIterator
+import psycopg2
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -41,6 +43,7 @@ from pydantic import BaseModel
 from langchain_core.messages import HumanMessage, AIMessage
 
 from agent.graph import get_graph
+from agent.model_policy import call_model
 from agent.tools.feature_tools import (
     create_feature, get_feature, list_features, update_feature,
     create_session, get_sessions, update_session_summary,
@@ -49,6 +52,269 @@ from agent.tools.feature_tools import (
 from db.connection import cursor
 
 app = FastAPI(title="One Context API", version="0.1.0")
+
+_ENABLE_HISTORY_COMPRESSION = os.getenv("ENABLE_HISTORY_COMPRESSION", "0").strip() != "0"
+
+_PENDING_MARKER_RE = re.compile(r"\n*<!-- PENDING_ACTION: .+? -->", re.DOTALL)
+
+
+def _ensure_conversation_state_columns() -> None:
+    """Add pending-state and structured-memory columns to conversations if needed."""
+    with cursor() as cur:
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pending_action JSONB")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pending_options JSONB")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pending_question TEXT")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS pending_updated_at TIMESTAMPTZ")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS session_goal TEXT")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS session_decisions JSONB")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS session_open_questions JSONB")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS session_next_actions JSONB")
+        cur.execute("ALTER TABLE conversations ADD COLUMN IF NOT EXISTS session_memory_updated_at TIMESTAMPTZ")
+
+
+def _coerce_str_list(value) -> list[str]:
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip()][:8]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _load_pending_context(conversation_id: int) -> dict | None:
+    """Load persisted pending context + structured memory for a conversation."""
+    try:
+        with cursor() as cur:
+            cur.execute(
+                """SELECT pending_action, pending_options, pending_question,
+                          session_goal, session_decisions, session_open_questions, session_next_actions
+                   FROM conversations WHERE id = %s""",
+                (conversation_id,),
+            )
+            row = cur.fetchone()
+    except psycopg2.errors.UndefinedColumn:
+        _ensure_conversation_state_columns()
+        with cursor() as cur:
+            cur.execute(
+                """SELECT pending_action, pending_options, pending_question,
+                          session_goal, session_decisions, session_open_questions, session_next_actions
+                   FROM conversations WHERE id = %s""",
+                (conversation_id,),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        return None
+
+    pending_action = row.get("pending_action")
+    pending_options = row.get("pending_options") or []
+    pending_question = row.get("pending_question")
+    structured_memory = {
+        "goal": (row.get("session_goal") or "").strip(),
+        "decisions": _coerce_str_list(row.get("session_decisions")),
+        "open_questions": _coerce_str_list(row.get("session_open_questions")),
+        "next_actions": _coerce_str_list(row.get("session_next_actions")),
+    }
+
+    has_pending = bool(pending_action or pending_options or pending_question)
+    has_memory = bool(
+        structured_memory["goal"]
+        or structured_memory["decisions"]
+        or structured_memory["open_questions"]
+        or structured_memory["next_actions"]
+    )
+    if not has_pending and not has_memory:
+        return None
+
+    return {
+        "pending_action": pending_action,
+        "pending_options": pending_options,
+        "pending_question": pending_question,
+        "structured_memory": structured_memory,
+    }
+
+
+def _strip_pending_marker(text: str) -> str:
+    return _PENDING_MARKER_RE.sub("", text or "").strip()
+
+
+def _normalize_structured_memory(memory: dict | None) -> dict:
+    memory = memory or {}
+    return {
+        "goal": str(memory.get("goal") or "").strip()[:300],
+        "decisions": _coerce_str_list(memory.get("decisions")),
+        "open_questions": _coerce_str_list(memory.get("open_questions")),
+        "next_actions": _coerce_str_list(memory.get("next_actions")),
+    }
+
+
+def _update_structured_memory(
+    existing_memory: dict | None,
+    user_message: str,
+    assistant_answer: str,
+    session_context: str,
+) -> dict | None:
+    """Update rolling structured memory from the latest turn using a cheap model."""
+    try:
+        import anthropic as _anthropic
+
+        current = _normalize_structured_memory(existing_memory)
+        clean_answer = _strip_pending_marker(assistant_answer)[:1200]
+        clean_user = (user_message or "").strip()[:900]
+        clean_session = (session_context or "").strip()[:1800]
+
+        system = (
+            "Update rolling conversation memory. Return JSON only with keys: "
+            "goal (string), decisions (array), open_questions (array), next_actions (array). "
+            "Keep entries concise, factual, and deduplicated. "
+            "Do not invent details not in the turn/context."
+        )
+
+        prompt = json.dumps(
+            {
+                "existing_memory": current,
+                "latest_user_message": clean_user,
+                "latest_assistant_message": clean_answer,
+                "session_context": clean_session,
+            },
+            ensure_ascii=True,
+        )
+
+        client = _anthropic.Anthropic()
+        resp = call_model(
+            client,
+            task="memory_update",
+            max_tokens=450,
+            system=system,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = resp.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw).strip()
+        parsed = json.loads(raw)
+        return _normalize_structured_memory(parsed)
+    except Exception:
+        return _normalize_structured_memory(existing_memory)
+
+
+def _persist_structured_memory(conversation_id: int, memory: dict | None) -> None:
+    """Persist rolling structured memory fields onto conversations."""
+    mem = _normalize_structured_memory(memory)
+    try:
+        with cursor() as cur:
+            cur.execute(
+                """UPDATE conversations
+                   SET session_goal = %s,
+                       session_decisions = %s::jsonb,
+                       session_open_questions = %s::jsonb,
+                       session_next_actions = %s::jsonb,
+                       session_memory_updated_at = now()
+                   WHERE id = %s""",
+                (
+                    mem.get("goal") or None,
+                    json.dumps(mem.get("decisions", [])),
+                    json.dumps(mem.get("open_questions", [])),
+                    json.dumps(mem.get("next_actions", [])),
+                    conversation_id,
+                ),
+            )
+    except psycopg2.errors.UndefinedColumn:
+        _ensure_conversation_state_columns()
+        with cursor() as cur:
+            cur.execute(
+                """UPDATE conversations
+                   SET session_goal = %s,
+                       session_decisions = %s::jsonb,
+                       session_open_questions = %s::jsonb,
+                       session_next_actions = %s::jsonb,
+                       session_memory_updated_at = now()
+                   WHERE id = %s""",
+                (
+                    mem.get("goal") or None,
+                    json.dumps(mem.get("decisions", [])),
+                    json.dumps(mem.get("open_questions", [])),
+                    json.dumps(mem.get("next_actions", [])),
+                    conversation_id,
+                ),
+            )
+
+
+def _extract_pending_options(answer: str) -> list[str]:
+    """Extract option bullets/numbered lines for ambiguous follow-up handling."""
+    clean = _PENDING_MARKER_RE.sub("", answer or "")
+    options: list[str] = []
+    for raw in clean.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("- ") or line.startswith("• "):
+            candidate = line[2:].strip()
+            if candidate:
+                options.append(candidate)
+            continue
+        m = re.match(r"^\d+[\.)]\s+(.+)$", line)
+        if m:
+            candidate = m.group(1).strip()
+            if candidate:
+                options.append(candidate)
+
+    # Keep order while deduplicating exact matches
+    seen = set()
+    deduped = []
+    for opt in options:
+        if opt not in seen:
+            seen.add(opt)
+            deduped.append(opt)
+    return deduped[:6]
+
+
+def _extract_pending_question(answer: str) -> str | None:
+    """Capture the lead question/prompt from the assistant response."""
+    clean = _PENDING_MARKER_RE.sub("", answer or "")
+    for raw in clean.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("- ") or line.startswith("• "):
+            continue
+        if re.match(r"^\d+[\.)]\s+", line):
+            continue
+        if line.lower().startswith("sources"):
+            continue
+        return line[:300]
+    return None
+
+
+def _persist_pending_context(conversation_id: int, pending_action: dict | None, answer: str) -> None:
+    """Persist pending action + lightweight disambiguation context to conversations."""
+    pending_options = _extract_pending_options(answer) if pending_action else []
+    pending_question = _extract_pending_question(answer) if pending_action else None
+
+    payload = json.dumps(pending_action) if pending_action else None
+
+    try:
+        with cursor() as cur:
+            cur.execute(
+                """UPDATE conversations
+                   SET pending_action = %s::jsonb,
+                       pending_options = %s::jsonb,
+                       pending_question = %s,
+                       pending_updated_at = now()
+                   WHERE id = %s""",
+                (payload, json.dumps(pending_options), pending_question, conversation_id),
+            )
+    except psycopg2.errors.UndefinedColumn:
+        _ensure_conversation_state_columns()
+        with cursor() as cur:
+            cur.execute(
+                """UPDATE conversations
+                   SET pending_action = %s::jsonb,
+                       pending_options = %s::jsonb,
+                       pending_question = %s,
+                       pending_updated_at = now()
+                   WHERE id = %s""",
+                (payload, json.dumps(pending_options), pending_question, conversation_id),
+            )
 
 
 def _infer_source_type(content_type: str | None, url: str, label: str | None = None) -> str:
@@ -428,8 +694,9 @@ def _compress_history(rows: list) -> str:
 
     transcript = "\n\n".join(lines[-20:])
     try:
-        resp = _client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        resp = call_model(
+            _client,
+            task="conversation_compress",
             max_tokens=350,
             system=COMPRESS_SYSTEM,
             messages=[{"role": "user", "content": f"Transcript:\n\n{transcript}"}],
@@ -439,12 +706,49 @@ def _compress_history(rows: list) -> str:
         return ""
 
 
+def _build_session_context(older_summary: str, recent_rows: list, structured_memory: dict | None = None) -> str:
+    """Create a compact session-wide context snapshot shared by all nodes."""
+    parts = []
+    mem = _normalize_structured_memory(structured_memory)
+    if mem["goal"] or mem["decisions"] or mem["open_questions"] or mem["next_actions"]:
+        memory_block = [f"Goal: {mem['goal']}" if mem["goal"] else "Goal: (not set)"]
+        if mem["decisions"]:
+            memory_block.append("Decisions: " + " | ".join(mem["decisions"][:5]))
+        if mem["open_questions"]:
+            memory_block.append("Open questions: " + " | ".join(mem["open_questions"][:5]))
+        if mem["next_actions"]:
+            memory_block.append("Next actions: " + " | ".join(mem["next_actions"][:5]))
+        parts.append("Structured memory:\n" + "\n".join(memory_block))
+
+    if older_summary:
+        parts.append(f"Earlier session summary:\n{older_summary}")
+
+    recent_lines = []
+    for row in recent_rows[-8:]:
+        content = (row.get("content") or "").strip()
+        if not content or content.startswith("[FEATURE CONTEXT") or content.startswith("[FEATURE CONTEXT ACK]"):
+            continue
+        content = _PENDING_MARKER_RE.sub("", content).strip()
+        if not content:
+            continue
+        label = "User" if row.get("role") == "user" else "Assistant"
+        recent_lines.append(f"{label}: {content[:300]}")
+
+    if recent_lines:
+        parts.append("Recent conversation:\n" + "\n".join(recent_lines))
+
+    return "\n\n".join(parts)[:3000]
+
+
 async def _stream_chat(
     conversation_id: int,
     user_message: str,
     author: str | None,
 ) -> AsyncIterator[str]:
     try:
+        pending_context = _load_pending_context(conversation_id)
+        structured_memory = (pending_context or {}).get("structured_memory") if pending_context else None
+
         # 1. Persist the user message
         with cursor() as cur:
             cur.execute(
@@ -472,7 +776,7 @@ async def _stream_chat(
         # Keep feature bootstrap messages + last RECENT_TURNS full turns verbatim.
         # Older turns are compressed into a single summary prefix to avoid
         # token bloat and context dilution on long conversations.
-        RECENT_TURNS = 6  # each turn = 1 user + 1 assistant message pair
+        RECENT_TURNS = 10  # each turn = 1 user + 1 assistant message pair
 
         bootstrap_rows = []
         real_rows = []
@@ -495,12 +799,17 @@ async def _stream_chat(
         # duplication bug that causes token bloat and confusing repeated context.
         # (bootstrap_rows stay in DB for UI filtering but are excluded from agent input)
 
-        # Compress older turns into a summary prefix injected as a system-style hint
-        if old_rows:
+        compressed = ""
+
+        # Compress older turns only when explicitly enabled. This avoids an extra
+        # LLM call on the critical path for every turn.
+        if _ENABLE_HISTORY_COMPRESSION and old_rows:
             compressed = _compress_history(old_rows)
             if compressed:
                 history.append(HumanMessage(content=f"[EARLIER CONVERSATION SUMMARY]\n{compressed}"))
                 history.append(AIMessage(content="Understood. I have context from earlier in this conversation."))
+
+        session_context = _build_session_context(compressed, recent_rows, structured_memory)
 
         # Append recent turns verbatim
         for row in recent_rows:
@@ -515,6 +824,7 @@ async def _stream_chat(
         loop = asyncio.get_event_loop()
         initial_state = {
             "messages": history,
+            "conversation_id": conversation_id,
             "feature_id": feature_id,
             "role": role,
             "intent": None,
@@ -522,7 +832,11 @@ async def _stream_chat(
             "answer": None,
             "citations": [],
             "needs_clarification": False,
-            "pending_action": None,
+            "pending_action": (pending_context or {}).get("pending_action") if pending_context else None,
+            "pending_context": pending_context,
+            "resolved_query": None,
+            "session_context": session_context,
+            "structured_memory": _normalize_structured_memory(structured_memory),
         }
         result = await loop.run_in_executor(
             None,
@@ -565,6 +879,34 @@ async def _stream_chat(
                    VALUES (%s, 'assistant', %s, %s)""",
                 (conversation_id, answer, cited_urls),
             )
+
+        # 8. Persist pending conversation state for robust follow-up handling
+        _persist_pending_context(conversation_id, result.get("pending_action"), answer)
+
+        # 9. Update rolling structured session memory off the critical path.
+        async def _background_memory_update():
+            import asyncio as _asyncio
+            loop = _asyncio.get_running_loop()
+            updated_memory = await loop.run_in_executor(
+                None,
+                _update_structured_memory,
+                result.get("structured_memory") or structured_memory,
+                user_message,
+                answer,
+                session_context,
+            )
+            await loop.run_in_executor(
+                None,
+                _persist_structured_memory,
+                conversation_id,
+                updated_memory,
+            )
+
+        try:
+            import asyncio as _asyncio
+            _asyncio.create_task(_background_memory_update())
+        except Exception:
+            pass
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 

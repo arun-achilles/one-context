@@ -9,8 +9,8 @@ from agent.state import AgentState
 
 
 def act_node(state: AgentState) -> AgentState:
-    # Extract the pending action from the last assistant message
-    pending_action = _extract_pending_action(state)
+    # Prefer structured pending action in state, fallback to legacy marker parsing.
+    pending_action = state.get("pending_action") or _extract_pending_action(state)
     if not pending_action:
         return {**state, "answer": "Nothing to confirm — I don't see a pending action."}
 

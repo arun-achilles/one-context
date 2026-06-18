@@ -5,12 +5,21 @@ Sets needs_clarification=True if top result score is below threshold.
 """
 import re
 from agent.state import AgentState
+from agent.model_policy import call_model
 from agent.tools.search_knowledge import search_knowledge, CONFIDENCE_THRESHOLD
 from agent.tools.memory_tool import search_memory
 from agent.tools.feature_tools import get_feature_retrieval_chunks
 
 # Matches Jira keys like CL-1524, OC-002, PROJ-99
 _JIRA_KEY_RE = re.compile(r'\b([A-Z][A-Z0-9]+-\d+)\b')
+_ACK_RE = re.compile(
+    r"^\s*(yes|yeah|yep|sure|ok|okay|go ahead|do it|please|sounds good|that works)\s*[.!]?\s*$",
+    re.IGNORECASE,
+)
+_CONTEXTUAL_RE = re.compile(
+    r"\b(it|that|this|those|these|they|them|same|above|earlier|previous|again|also)\b",
+    re.IGNORECASE,
+)
 
 
 def _msg_content(msg) -> str:
@@ -41,6 +50,13 @@ def _is_human_message(msg) -> bool:
     return t in ("human", "user") or "human" in cls
 
 
+def _is_ai_message(msg) -> bool:
+    """Best-effort check for an assistant message across message classes."""
+    t = (getattr(msg, "type", "") or "").lower()
+    cls = msg.__class__.__name__.lower()
+    return t in ("ai", "assistant") or "ai" in cls or "assistant" in cls
+
+
 def _build_standalone_query(messages: list) -> str:
     """
     Build a retrieval-focused standalone query from the latest user turn plus
@@ -54,6 +70,7 @@ def _build_standalone_query(messages: list) -> str:
         return ""
 
     summary = ""
+    prior_assistant_turn = ""
     prior_user_turns = []
     for msg in reversed(messages[:-1]):
         text = _msg_content(msg).strip()
@@ -66,8 +83,17 @@ def _build_standalone_query(messages: list) -> str:
             prior_user_turns.append(text)
             if len(prior_user_turns) >= 2:
                 break
+        elif not prior_assistant_turn and _is_ai_message(msg):
+            prior_assistant_turn = text
 
+    is_short_followup = (
+        len(latest.split()) <= 6
+        or bool(_ACK_RE.match(latest))
+        or bool(_CONTEXTUAL_RE.search(latest))
+    )
     parts = [f"Current request: {latest}"]
+    if prior_assistant_turn and is_short_followup:
+        parts.append("Latest assistant prompt: " + prior_assistant_turn[:500])
     if prior_user_turns:
         prior_user_turns.reverse()
         parts.append("Recent user context: " + " | ".join(prior_user_turns))
@@ -99,8 +125,9 @@ def _rewrite_query_with_haiku(standalone_query: str, latest_user_turn: str) -> s
             f"Context for disambiguation:\n{standalone_query}\n\n"
             "Standalone retrieval query:"
         )
-        resp = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+        resp = call_model(
+            client,
+            task="retrieval_rewrite",
             max_tokens=140,
             temperature=0,
             system=system,
@@ -190,8 +217,11 @@ def _fetch_live_confluence_search(query: str) -> list[dict]:
 
 
 def retriever_node(state: AgentState) -> AgentState:
-    latest_query = _msg_content(state["messages"][-1]).strip()
-    query = _build_standalone_query(state["messages"]) or latest_query
+    latest_query = state.get("resolved_query") or _msg_content(state["messages"][-1]).strip()
+    query = latest_query if state.get("resolved_query") else (_build_standalone_query(state["messages"]) or latest_query)
+    session_context = (state.get("session_context") or "").strip()
+    if session_context and not state.get("resolved_query"):
+        query = f"{query}\nSession context:\n{session_context[:1600]}"
     intent = state.get("intent", "qa")
     feature_id = state.get("feature_id")
 
