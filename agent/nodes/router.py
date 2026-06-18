@@ -21,20 +21,30 @@ from agent.model_policy import call_model
 
 client = anthropic.Anthropic()
 
-SYSTEM = """Classify the user's message into exactly one intent:
-- qa: question about the system, codebase, architecture, decisions, or team history
-- pipeline_query: question about sprint status, blockers, in-progress work, or delivery
-- story_draft: user wants to draft or create a Jira story/ticket
-- remember: user explicitly wants to save a decision, fact, or agreement to team memory
-- confluence_update: user wants to update or append content to a Confluence page
-- link_artefact: user wants to link or add a specific Jira ticket, Confluence page, or other artefact to the current feature (e.g. "add CL-1524 to this feature", "link this card to the feature")
-- update_jira: user wants to update, edit, or add content to an existing Jira ticket
-- create_subtasks: user wants to break down a story into subtasks or child tasks under a Jira ticket
-- create_confluence: user wants to create a brand new Confluence page or document
-- confirm_action: user is confirming or approving a previously shown draft (e.g. "yes", "create it", "looks good", "go ahead")
-- clarify: message is too vague or ambiguous to act on
+PLANNER_SYSTEM = """You are an intent planner for a delivery assistant.
 
-Reply with a JSON object: {"intent": "<intent>"}"""
+Choose one intent from:
+- qa
+- pipeline_query
+- story_draft
+- remember
+- confluence_update
+- link_artefact
+- update_jira
+- create_subtasks
+- create_confluence
+- confirm_action
+- clarify
+
+Return JSON only with this exact shape:
+{"intent":"...","confidence":0.0,"rewritten_request":"..."}
+
+Rules:
+- confidence must be between 0 and 1.
+- rewritten_request should be empty unless the latest user message is a short contextual follow-up.
+- Use session context and pending context when available.
+- If uncertain, choose clarify with low confidence.
+- Do not invent new scope beyond provided context."""
 
 FOLLOWUP_SYSTEM = """Resolve a short acknowledgement against the previous assistant turn.
 
@@ -71,6 +81,21 @@ _ACK_ONLY_RE = re.compile(
     r")\s*[.!]?\s*$",
     re.IGNORECASE,
 )
+
+_VALID_INTENTS = {
+    "qa", "pipeline_query", "story_draft", "remember", "confluence_update",
+    "link_artefact", "update_jira", "create_subtasks", "create_confluence",
+    "confirm_action", "clarify",
+}
+_INTENT_CONFIDENCE_THRESHOLD = 0.55
+
+_ROLE_ROUTING_HINTS = {
+    "po": "PO users often ask for scope, acceptance criteria, stories, and prioritization.",
+    "ba": "BA users often ask for requirements clarification, business rules, and process details.",
+    "dev": "Dev users often ask for implementation details, technical updates, and task breakdowns.",
+    "qa": "QA users often ask for test cases, edge cases, validation criteria, and defects.",
+    "tech_lead": "Tech leads often ask for architecture, risks, implementation plans, and technical decisions.",
+}
 
 
 def _msg_content(msg) -> str:
@@ -191,6 +216,52 @@ def _resolve_ack_followup(state: AgentState, last_message: str) -> dict | None:
     return data
 
 
+def _plan_intent(state: AgentState, last_message: str) -> dict | None:
+    pending_ctx = state.get("pending_context") or {}
+    role = (state.get("role") or "").strip().lower()
+    payload = {
+        "latest_user_message": last_message,
+        "router_context": _build_router_input_with_session(state),
+        "session_context": state.get("session_context") or "",
+        "role": role or "unknown",
+        "role_hint": _ROLE_ROUTING_HINTS.get(role, "General routing behavior."),
+        "has_pending_action": bool(state.get("pending_action")),
+        "pending_question": pending_ctx.get("pending_question"),
+        "pending_options": pending_ctx.get("pending_options") or [],
+    }
+    try:
+        response = call_model(
+            client,
+            task="router",
+            max_tokens=220,
+            system=PLANNER_SYSTEM,
+            messages=[{"role": "user", "content": json.dumps(payload, ensure_ascii=True)}],
+        )
+        raw = response.content[0].text.strip()
+        if raw.startswith("```"):
+            raw = re.sub(r"^```[a-z]*\n?", "", raw)
+            raw = re.sub(r"\n?```$", "", raw).strip()
+        data = json.loads(raw)
+    except Exception:
+        return None
+
+    intent = str(data.get("intent", "")).strip()
+    if intent not in _VALID_INTENTS:
+        return None
+    try:
+        confidence = float(data.get("confidence", 0.0))
+    except (TypeError, ValueError):
+        confidence = 0.0
+    confidence = max(0.0, min(1.0, confidence))
+    rewritten = str(data.get("rewritten_request", "") or "").strip()
+
+    return {
+        "intent": intent,
+        "confidence": confidence,
+        "rewritten_request": rewritten,
+    }
+
+
 def router_node(state: AgentState) -> AgentState:
     last_message = _msg_content(state["messages"][-1]).strip()
 
@@ -210,36 +281,46 @@ def router_node(state: AgentState) -> AgentState:
             }
         return {**state, "intent": "clarify", "resolved_query": None}
 
-    response = call_model(
-        client,
-        task="router",
-        max_tokens=30,
-        system=SYSTEM,
-        messages=[{"role": "user", "content": _build_router_input_with_session(state) or last_message}],
-    )
+    plan = _plan_intent(state, last_message)
+    if plan:
+        intent = plan["intent"]
+        confidence = plan["confidence"]
+        rewritten = plan["rewritten_request"]
 
-    try:
-        raw = response.content[0].text.strip()
-        # Strip markdown code fences if present (```json ... ``` or ``` ... ```)
-        if raw.startswith("```"):
-            raw = re.sub(r"^```[a-z]*\n?", "", raw)
-            raw = re.sub(r"\n?```$", "", raw).strip()
-        data = json.loads(raw)
-        intent = data.get("intent", "qa")
-    except (json.JSONDecodeError, IndexError):
-        intent = "qa"
+        # confirm_action must have a pending draft/action.
+        if intent == "confirm_action" and not _has_pending_draft(state):
+            if _ACK_ONLY_RE.match(last_message):
+                resolution = _resolve_ack_followup(state, last_message)
+                if resolution and resolution.get("action") == "proceed" and resolution.get("rewritten_request"):
+                    return {
+                        **state,
+                        "intent": resolution.get("intent", "qa"),
+                        "resolved_query": resolution.get("rewritten_request"),
+                    }
+            intent = "clarify"
 
-    valid = {"qa", "pipeline_query", "story_draft", "remember", "confluence_update",
-             "link_artefact", "update_jira", "create_subtasks", "create_confluence",
-             "confirm_action", "clarify"}
-    if intent not in valid:
-        intent = "qa"
+        if confidence >= _INTENT_CONFIDENCE_THRESHOLD:
+            return {
+                **state,
+                "intent": intent,
+                "resolved_query": rewritten or None,
+            }
 
-    # Double-check: if LLM says confirm_action, verify there's actually a pending draft
-    if intent == "confirm_action" and not _has_pending_draft(state):
-        intent = "qa"
+    # Minimal safety fallback only.
+    if _ACK_ONLY_RE.match(last_message) and not _has_pending_draft(state):
+        resolution = _resolve_ack_followup(state, last_message)
+        if resolution and resolution.get("action") == "proceed" and resolution.get("rewritten_request"):
+            return {
+                **state,
+                "intent": resolution.get("intent", "qa"),
+                "resolved_query": resolution.get("rewritten_request"),
+            }
+        return {**state, "intent": "clarify", "resolved_query": None}
 
-    return {**state, "intent": intent, "resolved_query": None}
+    if _has_pending_draft(state) and _CONFIRM_RE.match(last_message):
+        return {**state, "intent": "confirm_action", "resolved_query": None}
+
+    return {**state, "intent": "qa", "resolved_query": None}
 
 
 def _has_pending_draft(state: AgentState) -> bool:
